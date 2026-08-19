@@ -33,7 +33,8 @@
     "publish": {
       "provider": "github",
       "owner": "AB-Kevin",
-      "repo": "BillManager"
+      "repo": "BillManager",
+      "releaseType": "release"
     }
   },
   "allowScripts": {
