@@ -32,7 +32,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "Anabaptist-Brotherhood",
+      "owner": "AB-Kevin",
       "repo": "BillManager"
     }
   },
