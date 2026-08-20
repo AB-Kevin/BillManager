@@ -66,6 +66,44 @@ async function performUndo() {
   await refreshFiles();
 }
 
+// ---- Pending metadata writes ----
+// Every tag/comment edit fires its updateFileMeta IPC call without the caller
+// waiting on it (so the UI stays responsive), which means a refresh can start
+// while a write is still in flight. Since refreshFiles() re-reads every file's
+// metadata straight off disk and replaces state.files wholesale, a write that
+// hasn't landed yet gets clobbered by the stale read that follows it — the
+// edit looks like it "disappeared". This is normally a narrow race, but it
+// widens a lot on a network/cloud-synced folder (e.g. SharePoint/OneDrive)
+// where each metadata write takes far longer than on local disk. Tracking
+// every in-flight write here lets refreshFiles() wait for all of them to
+// settle before it re-reads, so a refresh can never observe a half-written
+// state.
+const pendingMetaWrites = new Set();
+
+function saveFileMeta(folder, path, patch) {
+  const promise = window.api.updateFileMeta(folder, path, patch).catch((e) => {
+    // A failed write used to fail silently: the optimistic in-memory edit stuck
+    // around until the next refresh quietly reverted it, with nothing to explain
+    // why. Surface it instead, same as the other file operations (move/delete/
+    // open) already do — most likely cause on a shared synced folder is another
+    // machine (or the sync client itself) holding the file locked.
+    alert(`Couldn't save changes to "${path.split("/").pop()}":\n${e.message || e}`);
+    throw e;
+  });
+  pendingMetaWrites.add(promise);
+  const forget = () => pendingMetaWrites.delete(promise);
+  promise.then(forget, forget);
+  return promise;
+}
+
+async function waitForPendingMetaWrites() {
+  // Iterate as a snapshot: awaiting can let new writes queue (e.g. an undo
+  // callback firing its own save), so loop until nothing's left pending.
+  while (pendingMetaWrites.size > 0) {
+    await Promise.allSettled([...pendingMetaWrites]);
+  }
+}
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -182,6 +220,14 @@ async function refreshFiles(skipFocusNudge = false) {
   state.refreshing = true;
   render();
   try {
+    // A tag/comment edit's write can still be in flight (comments are debounced
+    // 300ms behind typing; nothing else here is awaited by its caller either) when
+    // a refresh kicks off. Since listFiles reads straight off disk and replaces
+    // state.files wholesale, reading before that write lands would make the edit
+    // look like it never happened. Flush the debounce and wait out every pending
+    // write first so the read below always reflects the latest edits.
+    flushPendingComments();
+    await waitForPendingMetaWrites();
     [state.files, state.allFolders] = await Promise.all([
       window.api.listFiles(state.folder),
       window.api.listFolders(state.folder),
@@ -254,8 +300,8 @@ async function addTag(raw) {
   const newTags = [...file.tags, tag];
   file.tags = newTags;
   render();
-  await window.api.updateFileMeta(state.folder, path, { tags: newTags });
-  pushUndo(`Add tag "${tag}"`, () => window.api.updateFileMeta(state.folder, path, { tags: prevTags }));
+  await saveFileMeta(state.folder, path, { tags: newTags });
+  pushUndo(`Add tag "${tag}"`, () => saveFileMeta(state.folder, path, { tags: prevTags }));
 }
 
 async function removeTag(tag) {
@@ -265,8 +311,8 @@ async function removeTag(tag) {
   const path = file.path;
   file.tags = file.tags.filter((t) => t !== tag);
   render();
-  await window.api.updateFileMeta(state.folder, path, { tags: file.tags });
-  pushUndo(`Remove tag "${tag}"`, () => window.api.updateFileMeta(state.folder, path, { tags: prevTags }));
+  await saveFileMeta(state.folder, path, { tags: file.tags });
+  pushUndo(`Remove tag "${tag}"`, () => saveFileMeta(state.folder, path, { tags: prevTags }));
 }
 
 const commentDebounce = {}; // per-index timer while a comment's textarea is being typed in
@@ -274,10 +320,27 @@ function updateComment(idx, value) {
   const file = getSelected();
   if (!file) return;
   file.comments[idx] = value;
-  clearTimeout(commentDebounce[idx]);
-  commentDebounce[idx] = setTimeout(() => {
-    window.api.updateFileMeta(state.folder, file.path, { comments: file.comments });
-  }, 300);
+  if (commentDebounce[idx]) clearTimeout(commentDebounce[idx].timer);
+  commentDebounce[idx] = {
+    timer: setTimeout(() => flushComment(idx), 300),
+    flush: () => saveFileMeta(state.folder, file.path, { comments: file.comments }),
+  };
+}
+
+// Immediately commits a comment edit that's still sitting in its debounce
+// window, instead of waiting out the remaining delay. Used both when the
+// debounce timer itself fires and — critically — right before a refresh reads
+// the folder back off disk, so that read can never land ahead of this write.
+function flushComment(idx) {
+  const pending = commentDebounce[idx];
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  delete commentDebounce[idx];
+  pending.flush();
+}
+
+function flushPendingComments() {
+  Object.keys(commentDebounce).forEach((idx) => flushComment(idx));
 }
 
 // Captured when a comment textarea gains focus (see renderPreview), keyed by
@@ -295,7 +358,7 @@ function addComment() {
   const areas = document.querySelectorAll(".fm-comment-area");
   const last = areas[areas.length - 1];
   if (last) last.focus();
-  pushUndo("Add comment", () => window.api.updateFileMeta(state.folder, path, { comments: prevComments }));
+  pushUndo("Add comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
 }
 
 function removeComment(idx) {
@@ -303,11 +366,12 @@ function removeComment(idx) {
   if (!file) return;
   const prevComments = [...file.comments];
   const path = file.path;
+  if (commentDebounce[idx]) clearTimeout(commentDebounce[idx].timer);
   delete commentDebounce[idx];
   file.comments = file.comments.filter((_, i) => i !== idx);
   render();
-  window.api.updateFileMeta(state.folder, path, { comments: file.comments });
-  pushUndo("Remove comment", () => window.api.updateFileMeta(state.folder, path, { comments: prevComments }));
+  saveFileMeta(state.folder, path, { comments: file.comments });
+  pushUndo("Remove comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
 }
 
 async function openFile(relPath) {
@@ -537,7 +601,7 @@ function applyTagChangesToFiles(renameMap, removedNames) {
       }
     });
     file.tags = newTags;
-    window.api.updateFileMeta(state.folder, file.path, { tags: newTags });
+    saveFileMeta(state.folder, file.path, { tags: newTags });
   });
   return snapshots;
 }
@@ -549,7 +613,7 @@ function applyTagChangesToFiles(renameMap, removedNames) {
 async function undoTagManagerSave(prevPredefinedTags, fileTagSnapshots) {
   await savePredefinedTags(prevPredefinedTags);
   for (const { path, prevTags } of fileTagSnapshots) {
-    await window.api.updateFileMeta(state.folder, path, { tags: prevTags });
+    await saveFileMeta(state.folder, path, { tags: prevTags });
   }
 }
 
@@ -1186,7 +1250,7 @@ function renderPreview(file) {
       if (JSON.stringify(before.comments) === JSON.stringify(f.comments)) return; // nothing changed since focus
       const path = before.path;
       const prevComments = before.comments;
-      pushUndo("Edit comment", () => window.api.updateFileMeta(state.folder, path, { comments: prevComments }));
+      pushUndo("Edit comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
     });
   });
   panel.querySelectorAll(".fm-comment-remove").forEach((btn) => {

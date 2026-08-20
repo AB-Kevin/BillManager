@@ -156,9 +156,24 @@ async function readFileMeta(full, ext) {
 async function writeFileMeta(full, ext, tags, comments) {
   const serialized = serializeComments(comments);
   if (ext === ".pdf") {
-    const keywordsArg = tags.length ? `-PDF:Keywords=${tags.join(", ")}` : "-PDF:Keywords=";
-    const subjectArg = serialized ? `-PDF:Subject=${serialized}` : "-PDF:Subject=";
-    await exiftool.write(full, {}, { writeArgs: ["-overwrite_original", keywordsArg, subjectArg] });
+    // PDF:Keywords/PDF:Subject are plain string fields in the Info dictionary
+    // (not exiftool List-type tags), so keywords are joined into one string
+    // ourselves rather than handed over as an array, same as before. The
+    // important change is passing values through exiftool-vendored's
+    // object-based write API instead of building raw `-Tag=value` strings into
+    // writeArgs by hand: exiftool runs with `-stay_open True -@ -`, meaning
+    // arguments are sent to it one per line, and a hand-built writeArgs string
+    // goes in completely unescaped. COMMENT_SEP embeds literal newlines, and so
+    // does any comment the user typed across multiple lines, so an argument
+    // like `-PDF:Subject=first\n\nsecond` would silently split into several
+    // arguments and corrupt (in practice: reject) the write. The object API
+    // HTML-encodes values like these before building its own arguments, which
+    // is exactly what already made this safe for the JPG/PNG branch below.
+    await exiftool.write(
+      full,
+      { "PDF:Keywords": tags.join(", "), "PDF:Subject": serialized },
+      { writeArgs: ["-overwrite_original"] }
+    );
     return;
   }
   await exiftool.write(full, { Keywords: tags, Comment: serialized }, { writeArgs: ["-overwrite_original"] });
