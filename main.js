@@ -143,8 +143,22 @@ function parseComments(raw) {
 async function readFileMeta(full, ext) {
   try {
     if (ext === ".pdf") {
-      const tags = await exiftool.read(full, ["-PDF:Keywords", "-PDF:Subject"]);
-      return { tags: toStringArray(tags.Keywords), comments: parseComments(tags.Subject) };
+      // Some PDFs (notably ones that have been through a scan/print-to-PDF
+      // driver, e.g. Foxit's PDF printer) carry an embedded XMP metadata
+      // stream alongside the Info dictionary — often with an empty
+      // dc:subject/dc:description left behind by that driver. exiftool's
+      // default read pulls in every tag group, and when an unqualified
+      // "Keywords"/"Subject" name exists in more than one group, it can
+      // resolve to that other (empty) group's value instead of PDF's, even
+      // though we explicitly asked for "-PDF:Keywords"/"-PDF:Subject". The
+      // write always lands correctly in the Info dictionary, so this only
+      // shows up on the read: the tag/comment looks like it was never saved
+      // the next time the folder is refreshed, even though it's still on
+      // disk. "-G" makes exiftool return fully group-qualified keys (e.g.
+      // "PDF:Keywords") so the lookup below can never be shadowed by another
+      // group's same-named tag.
+      const tags = await exiftool.read(full, ["-G", "-PDF:Keywords", "-PDF:Subject"]);
+      return { tags: toStringArray(tags["PDF:Keywords"]), comments: parseComments(tags["PDF:Subject"]) };
     }
     const tags = await exiftool.read(full);
     return { tags: toStringArray(tags.Keywords), comments: parseComments(tags.Comment) };
