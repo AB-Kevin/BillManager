@@ -9,12 +9,23 @@ name: Release
 # This can be run from Windows (or anywhere) — GitHub's own macOS runner
 # builds the Mac installer, no local Mac required.
 #
-# windows and mac run one after another (not in parallel): electron-builder's
-# --publish step both creates/updates the same GitHub Release for the tag, and
-# two jobs doing that at the same time can race and silently drop an asset
-# (this bit us once — the Mac job's .dmg and latest-mac.yml never made it into
-# a release even though its job reported success). `needs:` below serializes
-# them so only one job is ever touching the release at a time.
+# Two known electron-builder GitHub-publish gotchas this workflow works around:
+#
+# 1. windows and mac run one after another (not in parallel): electron-builder's
+#    --publish step both creates/updates the same GitHub Release for the tag, and
+#    two jobs doing that at the same time can race and silently drop an asset
+#    (bit us once — the Mac job's .dmg and latest-mac.yml never made it into a
+#    release even though its job reported success). `needs:` below serializes
+#    them so only one build job is ever touching the release at a time.
+#
+# 2. electron-builder itself has a known bug (electron-userland/electron-builder
+#    #6676) where its "does a release already exist for this tag" lookup can
+#    race/miss right after creating one, so it creates a SECOND release with the
+#    same tag and splits assets across both (bit us too — the Windows job alone
+#    split its own .exe and .exe.blockmap across two separate "v1.2.3" releases).
+#    The create-release job below pre-creates the release before either build
+#    runs, so both build jobs only ever have to find-and-upload to one that
+#    already fully exists — no create race left for electron-builder to lose.
 
 on:
   push:
@@ -26,7 +37,24 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure a GitHub Release exists for this version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, reusing it."
+          else
+            gh release create "$TAG" --repo "${{ github.repository }}" --title "$TAG" --notes ""
+          fi
+
   release-windows:
+    needs: create-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
