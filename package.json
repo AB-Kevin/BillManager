@@ -8,7 +8,9 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win",
-    "release": "electron-builder --win --publish always"
+    "dist:mac": "electron-builder --mac",
+    "release": "electron-builder --win --publish always",
+    "release:mac": "electron-builder --mac --publish always"
   },
   "devDependencies": {
     "electron": "^43.4.1",
@@ -29,6 +31,13 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "publish": {
       "provider": "github",

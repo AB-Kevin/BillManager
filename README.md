@@ -1,7 +1,7 @@
 # BillManager — desktop file manager
 Private - Anabaptist Brotherhood internal use only
 
-A Windows desktop app (built with Electron) that browses a real folder on your
+A Windows and Mac desktop app (built with Electron) that browses a real folder on your
 computer, previews PDFs/JPGs/PNGs, and lets you tag and comment on each
 file. Tags and comments are written directly into each file's own native
 metadata (PDF Info dictionary Keywords/Subject; JPG/PNG Keywords/Comment) via
@@ -12,8 +12,8 @@ internally so they round-trip cleanly.
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org) (LTS version) installed on your Windows machine.
-  This includes `npm`, which you'll use to install dependencies and build the app.
+- [Node.js](https://nodejs.org) (LTS version). This includes `npm`, which
+  you'll use to install dependencies and build the app.
 
 ## 1. Run it in development mode
 
@@ -41,6 +41,40 @@ electron-builder downloads a small packaging tool. Double-click the generated
 installer to install BillManager like any other Windows app — it'll show up in
 your Start Menu and can be uninstalled from Windows Settings normally.
 
+## 3. Build a standalone Mac app (.dmg/.zip)
+
+Mac installers must be built on a Mac (electron-builder can't cross-build them
+from Windows). On a Mac, run:
+
+```
+npm run dist:mac
+```
+
+This produces a `.dmg` and `.zip` in the `dist/` folder. The build isn't
+signed with a paid Apple Developer ID, so on first launch macOS Gatekeeper
+will warn that the app is from an unidentified developer. To open it anyway:
+
+- Right-click (or Control-click) the app → **Open** → confirm in the dialog
+  that appears, **or**
+- **System Settings → Privacy & Security** → scroll down → **Open Anyway**.
+
+This is only needed once per machine, on the very first launch.
+
+## Releasing (both platforms, from either OS)
+
+Releases are automated via [.github/workflows/release.yml](.github/workflows/release.yml).
+Bump `"version"` in `package.json`, commit, then push a matching tag:
+
+```
+git tag v1.2.2
+git push origin v1.2.2
+```
+
+GitHub Actions then builds the Windows `.exe` (on a Windows runner) and the
+Mac `.dmg`/`.zip` (on a macOS runner) and publishes both to the GitHub Release
+for that tag — no local Mac needed. `electron-updater` picks the right asset
+per platform automatically, so this can be run entirely from Windows.
+
 ## Notes
 
 - Tags and comments are written into each file's native metadata, so they
@@ -61,8 +95,10 @@ your Start Menu and can be uninstalled from Windows Settings normally.
   reopened — until then it's held out of sight so Undo can bring it back.
   Checkbox-select several files to move or delete them as one batch (and undo
   the whole batch as one step) from the bulk-actions bar above the grid.
-- To give the installer a custom icon, add a `build/icon.ico` file and
-  reference it as `"icon": "build/icon.ico"` under `"win"` in `package.json`.
+- Installer icons live in `build/icon.ico` (Windows) and `build/icon.icns`
+  (Mac), referenced under `"win"`/`"mac"` in `package.json`. To regenerate the
+  `.icns` from a source image on a Mac: create an `icon.iconset` folder with
+  the required PNG sizes, then run `iconutil -c icns icon.iconset`.
 - Only `.pdf`, `.jpg`, `.jpeg`, and `.png` files are shown.
 - "All files" browses the chosen folder and every subfolder recursively. The
   sidebar lists the subfolder tree underneath it — click a subfolder to

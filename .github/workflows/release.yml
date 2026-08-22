@@ -1,0 +1,47 @@
+name: Release
+
+# Builds the Windows (.exe) and macOS (.dmg/.zip) installers and publishes
+# them both to the GitHub Release for the pushed tag.
+#
+# Usage: bump "version" in package.json, commit, then:
+#   git tag v1.2.2
+#   git push origin v1.2.2
+# This can be run from Windows (or anywhere) — GitHub's own macOS runner
+# builds the Mac installer, no local Mac required.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & publish (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & publish (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run release:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
