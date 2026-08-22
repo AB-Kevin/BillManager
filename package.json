@@ -1,6 +1,6 @@
 {
   "name": "billmanager-file-manager",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "BillManager - a desktop file manager with preview, tagging, and notes",
   "main": "main.js",
   "author": "",
