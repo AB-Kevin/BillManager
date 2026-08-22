@@ -61,6 +61,22 @@ app.on("will-quit", () => {
 // user's bandwidth/disk without them asking for it first.
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
+// Lets "Check for Updates" actually hit GitHub when running unpacked (npm
+// start), reading dev-app-update.yml instead of silently no-op'ing. Has no
+// effect on a packaged build — those always use the real app-update.yml
+// electron-builder generates, regardless of this flag.
+autoUpdater.forceDevUpdateConfig = true;
+
+// Mac builds are only ad-hoc signed (no paid Apple Developer ID), which is
+// enough for the app to launch but not enough for Squirrel.Mac — the
+// mechanism electron-updater uses under the hood on macOS — to silently
+// install an update; it requires a real Developer ID signature to do that.
+// So on Mac, "checking for updates" still works (it just reads the version
+// info electron-builder publishes), but instead of downloading/installing
+// in-app, we hand the user off to the GitHub release page to grab the new
+// .dmg themselves.
+const IS_MAC = process.platform === "darwin";
+const RELEASES_URL = "https://github.com/AB-Kevin/BillManager/releases/latest";
 
 function sendUpdateStatus(status) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -72,7 +88,11 @@ autoUpdater.on("checking-for-update", () => {
   sendUpdateStatus({ state: "checking" });
 });
 autoUpdater.on("update-available", (info) => {
-  sendUpdateStatus({ state: "available", version: info.version });
+  if (IS_MAC) {
+    sendUpdateStatus({ state: "available-manual", version: info.version });
+  } else {
+    sendUpdateStatus({ state: "available", version: info.version });
+  }
 });
 autoUpdater.on("update-not-available", () => {
   sendUpdateStatus({ state: "not-available" });
@@ -105,6 +125,10 @@ ipcMain.handle("download-update", async () => {
 
 ipcMain.handle("quit-and-install", () => {
   autoUpdater.quitAndInstall();
+});
+
+ipcMain.handle("open-releases-page", () => {
+  shell.openExternal(RELEASES_URL);
 });
 
 ipcMain.handle("get-app-version", () => app.getVersion());

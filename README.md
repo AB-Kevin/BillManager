@@ -60,6 +60,14 @@ will warn that the app is from an unidentified developer. To open it anyway:
 
 This is only needed once per machine, on the very first launch.
 
+Because the build isn't signed with a paid Developer ID, in-app auto-update
+also can't silently install a new version on Mac (that part of
+electron-updater requires real signing). Mac's "Update" button still detects
+when a new version is out, but clicking it just opens the GitHub release page
+so the new `.dmg` can be downloaded and installed the normal way — the same
+Gatekeeper "Open Anyway" step applies again on that reinstall. Windows is
+unaffected and keeps installing updates in-app.
+
 ## Releasing (both platforms, from either OS)
 
 Releases are automated via [.github/workflows/release.yml](.github/workflows/release.yml).

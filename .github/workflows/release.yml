@@ -8,6 +8,13 @@ name: Release
 #   git push origin v1.2.2
 # This can be run from Windows (or anywhere) — GitHub's own macOS runner
 # builds the Mac installer, no local Mac required.
+#
+# windows and mac run one after another (not in parallel): electron-builder's
+# --publish step both creates/updates the same GitHub Release for the tag, and
+# two jobs doing that at the same time can race and silently drop an asset
+# (this bit us once — the Mac job's .dmg and latest-mac.yml never made it into
+# a release even though its job reported success). `needs:` below serializes
+# them so only one job is ever touching the release at a time.
 
 on:
   push:
@@ -19,11 +26,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  release-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -35,13 +39,33 @@ jobs:
       - run: npm ci
 
       - name: Build & publish (Windows)
-        if: matrix.os == 'windows-latest'
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  release-mac:
+    needs: release-windows
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
       - name: Build & publish (macOS)
-        if: matrix.os == 'macos-latest'
         run: npm run release:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Mac auto-update assets were actually published
+        run: |
+          for f in dist/latest-mac.yml dist/*.dmg; do
+            if ! ls $f >/dev/null 2>&1; then
+              echo "::error::Expected artifact missing: $f (Mac release build produced no such file — check the electron-builder output above)"
+              exit 1
+            fi
+          done

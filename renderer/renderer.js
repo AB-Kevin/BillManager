@@ -33,7 +33,7 @@ const state = {
   recordingShortcutIdx: null, // index into tagModalDraft currently listening for a keypress
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   appVersion: "",
-  updateStatus: { state: "idle" }, // mirrors the main process's autoUpdater: idle | checking | available | not-available | downloading | downloaded | error
+  updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
 };
 
 const TAG_COLOR_PALETTE = ["#2e6b5c", "#b9812c", "#9c4a3d", "#4a6fa5", "#7a5980", "#5c7a3d", "#a55a4a", "#3d6b7a"];
@@ -767,6 +767,13 @@ function restartToInstall() {
   window.api.quitAndInstall();
 }
 
+// Mac builds can't silently install (see main.js's IS_MAC comment), so an
+// available update there just opens the GitHub release page for the user to
+// download and install by hand instead.
+function openReleasesPage() {
+  window.api.openReleasesPage();
+}
+
 function renderUpdateFooter() {
   const s = state.updateStatus;
   let body;
@@ -774,6 +781,8 @@ function renderUpdateFooter() {
     body = `<span class="fm-update-text">${ICONS.refresh} Checking for updates…</span>`;
   } else if (s.state === "available") {
     body = `<button class="fm-update-action" id="update-download">${ICONS.download} Download update ${s.version}</button>`;
+  } else if (s.state === "available-manual") {
+    body = `<button class="fm-update-action" id="update-manual">${ICONS.download} Get update ${s.version} (opens browser)</button>`;
   } else if (s.state === "downloading") {
     body = `<span class="fm-update-text">${ICONS.download} Downloading… ${s.percent ?? 0}%</span>`;
   } else if (s.state === "downloaded") {
@@ -797,6 +806,8 @@ function renderUpdateFooter() {
   if (checkBtn) checkBtn.addEventListener("click", checkForUpdates);
   const downloadBtn = footer.querySelector("#update-download");
   if (downloadBtn) downloadBtn.addEventListener("click", downloadUpdate);
+  const manualBtn = footer.querySelector("#update-manual");
+  if (manualBtn) manualBtn.addEventListener("click", openReleasesPage);
   const restartBtn = footer.querySelector("#update-restart");
   if (restartBtn) restartBtn.addEventListener("click", restartToInstall);
   // "Up to date"/"failed" are transient — clicking them re-checks like the idle button does.

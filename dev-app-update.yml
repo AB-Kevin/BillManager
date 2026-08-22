@@ -1,0 +1,7 @@
+# Only read when running unpacked (npm start) with autoUpdater.forceDevUpdateConfig
+# set — see main.js. Mirrors the "publish" block in package.json so a dev run
+# checks the same GitHub Releases feed a real packaged build would.
+provider: github
+owner: AB-Kevin
+repo: BillManager
+releaseType: release
