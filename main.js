@@ -17,8 +17,9 @@ function createWindow() {
     height: 820,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: "#12161d",
+    backgroundColor: "#FFFFFF",
     autoHideMenuBar: true,
+    frame: false,
     icon: path.join(__dirname, "build", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -28,7 +29,32 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  // The renderer draws its own title bar (see the design refresh) since the
+  // window is frameless; mirror maximize/unmaximize back to it so the
+  // restore/maximize glyph can reflect the real window state.
+  mainWindow.on("maximize", () => sendWindowState());
+  mainWindow.on("unmaximize", () => sendWindowState());
 }
+
+function sendWindowState() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("window-state", { maximized: mainWindow.isMaximized() });
+  }
+}
+
+ipcMain.handle("window-minimize", () => {
+  mainWindow?.minimize();
+});
+ipcMain.handle("window-maximize-toggle", () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+ipcMain.handle("window-close", () => {
+  mainWindow?.close();
+});
+ipcMain.handle("window-is-maximized", () => !!mainWindow?.isMaximized());
 
 // Deleted files land here instead of being unlinked outright, so the renderer's
 // Undo stack can restore one. The stack only lives in memory, so anything still
@@ -76,7 +102,8 @@ autoUpdater.forceDevUpdateConfig = true;
 // in-app, we hand the user off to the GitHub release page to grab the new
 // .dmg themselves.
 const IS_MAC = process.platform === "darwin";
-const RELEASES_URL = "https://github.com/AB-Kevin/BillManager/releases/latest";
+const REPO_URL = "https://github.com/AB-Kevin/BillManager";
+const RELEASES_URL = `${REPO_URL}/releases/latest`;
 
 function sendUpdateStatus(status) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -129,6 +156,10 @@ ipcMain.handle("quit-and-install", () => {
 
 ipcMain.handle("open-releases-page", () => {
   shell.openExternal(RELEASES_URL);
+});
+
+ipcMain.handle("open-repo-page", () => {
+  shell.openExternal(REPO_URL);
 });
 
 ipcMain.handle("get-app-version", () => app.getVersion());

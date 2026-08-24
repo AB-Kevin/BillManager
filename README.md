@@ -104,9 +104,10 @@ per platform automatically, so this can be run entirely from Windows.
   Checkbox-select several files to move or delete them as one batch (and undo
   the whole batch as one step) from the bulk-actions bar above the grid.
 - Installer icons live in `build/icon.ico` (Windows) and `build/icon.icns`
-  (Mac), referenced under `"win"`/`"mac"` in `package.json`. To regenerate the
-  `.icns` from a source image on a Mac: create an `icon.iconset` folder with
-  the required PNG sizes, then run `iconutil -c icns icon.iconset`.
+  (Mac), referenced under `"win"`/`"mac"` in `package.json`. `build/icon.png`
+  is a flat 512px reference PNG of the same mark, not consumed by the build.
+- "About" in the sidebar (below the version number) shows the app version,
+  update status, a short description, credits, and a link to this repo.
 - Only `.pdf`, `.jpg`, `.jpeg`, and `.png` files are shown.
 - "All files" browses the chosen folder and every subfolder recursively. The
   sidebar lists the subfolder tree underneath it — click a subfolder to

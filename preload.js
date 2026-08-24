@@ -27,4 +27,14 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("update-status", listener);
     return () => ipcRenderer.removeListener("update-status", listener);
   },
+  openRepo: () => ipcRenderer.invoke("open-repo-page"),
+  windowMinimize: () => ipcRenderer.invoke("window-minimize"),
+  windowMaximizeToggle: () => ipcRenderer.invoke("window-maximize-toggle"),
+  windowClose: () => ipcRenderer.invoke("window-close"),
+  windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
+  onWindowState: (callback) => {
+    const listener = (event, state) => callback(state);
+    ipcRenderer.on("window-state", listener);
+    return () => ipcRenderer.removeListener("window-state", listener);
+  },
 });

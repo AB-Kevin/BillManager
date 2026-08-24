@@ -3,18 +3,40 @@ const ICONS = {
   folder: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>`,
   tag: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.29-8.29a1 1 0 0 0 0-1.41L12 2Z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>`,
   x: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  search: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a89f8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  search: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B8D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
   trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
   plus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   pencil: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
   open: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
-  filetext: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#9c4a3d" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`,
-  emptyFolder: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#77705f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>`,
+  filetext: `<svg width="34" height="42" viewBox="0 0 34 42"><rect x="0.5" y="0.5" width="33" height="41" fill="#FFFFFF" stroke="#BBCFC4"/><rect x="7" y="11" width="20" height="2" fill="#006E47"/><rect x="7" y="18" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="23" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="28" width="12" height="1" fill="#D5D6D7"/></svg>`,
+  emptyFolder: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#58595B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>`,
   refresh: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><polyline points="3 21 3 16 8 16"/></svg>`,
   undo: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>`,
   download: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  winMinimize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="4.5" width="10" height="1" fill="currentColor"/></svg>`,
+  winMaximize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>`,
+  winRestore: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="2.5" y="0.5" width="7" height="7" fill="none" stroke="currentColor"/><path d="M0.5 2.5V9.5H7.5" fill="none" stroke="currentColor"/></svg>`,
+  winClose: `<svg width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5 9.5 9.5 M9.5 0.5 0.5 9.5" stroke="currentColor"/></svg>`,
 };
+
+// The "Stack" app mark (design_handoff_billmanager_refresh — application icon spec):
+// a rounded green square with two layered document sheets. `reversed` swaps it for
+// the white-plate variant used on the About window's green band.
+function appMark(size, reversed) {
+  const square = reversed ? "#FFFFFF" : "#006E47";
+  const back = "#BBCFC4";
+  const front = reversed ? "#006E47" : "#FFFFFF";
+  const mark = reversed ? "#FFFFFF" : "#006E47";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true">
+    <rect width="32" height="32" rx="7" fill="${square}"/>
+    <rect x="6" y="9" width="14" height="17" fill="${back}"/>
+    <rect x="9" y="6" width="14" height="17" fill="${front}"/>
+    <rect x="11.5" y="10" width="9" height="2" fill="${mark}"/>
+    <rect x="11.5" y="14" width="9" height="1" fill="${back}"/>
+    <rect x="11.5" y="17.5" width="6" height="1" fill="${back}"/>
+  </svg>`;
+}
 
 const state = {
   folder: null,
@@ -31,12 +53,18 @@ const state = {
   tagModalOpen: false,
   tagModalDraft: null, // working copy of predefinedTags while the manage-tags modal is open
   recordingShortcutIdx: null, // index into tagModalDraft currently listening for a keypress
+  colorPicker: null, // { idx, h, s, v } — the tag-row color picker popover, or null if closed
+  aboutOpen: false,
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
+  windowMaximized: false,
 };
 
-const TAG_COLOR_PALETTE = ["#2e6b5c", "#b9812c", "#9c4a3d", "#4a6fa5", "#7a5980", "#5c7a3d", "#a55a4a", "#3d6b7a"];
+// Brand green and brand gray first (the system's two native tones), then a run of
+// muted, desaturated accents for telling many custom tags apart without straying
+// into saturated/primary territory the rest of the design system avoids.
+const TAG_COLOR_PALETTE = ["#006E47", "#58595B", "#8A6F3D", "#4A6FA5", "#7A5980", "#5C7A3D", "#9C4A3D", "#3D6B7A"];
 
 const app = document.getElementById("app");
 
@@ -167,8 +195,8 @@ function renderFolderTree(node, depth) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
     .map(
       (child) => `
-      <div class="fm-folder-nav ${state.activeFolder === child.path ? "active" : ""}" data-folder="${child.path.replace(/"/g, "&quot;")}" style="padding-left:${10 + depth * 14}px">
-        ${ICONS.folder}<span class="fm-folder-nav-name">${child.name}</span><span class="fm-nav-count">${child.total}</span>
+      <div class="bm-nav-item ${state.activeFolder === child.path ? "active" : ""}" data-folder="${child.path.replace(/"/g, "&quot;")}" style="padding-left:${10 + depth * 14}px">
+        <span class="bm-nav-name">${ICONS.folder}${child.name}</span><span class="bm-nav-count">${child.total}</span>
       </div>
       ${renderFolderTree(child, depth + 1)}`
     )
@@ -180,11 +208,84 @@ function getTagColor(name) {
   return (t && t.color) || null;
 }
 
-// Colored chips fall back to the default teal styling (see --chip-color/--chip-bg in CSS)
-// when a tag has no predefined color, e.g. legacy tags applied before this feature existed.
-function chipStyleAttr(tagName) {
-  const c = getTagColor(tagName);
-  return c ? ` style="--chip-color:${c}; --chip-bg: color-mix(in srgb, ${c} 16%, white);"` : "";
+// ---- Color math (shared by tag-chip coloring and the tag manager's color picker) ----
+
+function clamp(min, max, v) {
+  return Math.min(max, Math.max(min, v));
+}
+
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  const clean = m ? m[1] : "006e47";
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(r, g, b) {
+  const c = (n) => clamp(0, 255, Math.round(n)).toString(16).padStart(2, "0");
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase();
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const s = max === 0 ? 0 : d / max;
+  return { h, s, v: max };
+}
+
+function hsvToRgb(h, s, v) {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r, g, b;
+  if (h < 60) [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return { r: (r + m) * 255, g: (g + m) * 255, b: (b + m) * 255 };
+}
+
+// A pale tag color (the default "Waiting" sage, or any other light custom pick)
+// reads poorly as text on its own tint, so it falls back to an outline treatment
+// with a darkened readout instead — everything else gets a light filled tint.
+// This is a general rule (works for any color a user picks), not a lookup of
+// specific tag names.
+function chipTone(hex) {
+  if (!hex) return { bg: "var(--green-100)", color: "var(--green-500)", border: "transparent" };
+  const { r, g, b } = hexToRgb(hex);
+  const lin = (c) => {
+    c /= 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  };
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  if (L > 0.55) {
+    return { bg: "var(--white)", border: hex, color: `color-mix(in srgb, ${hex} 55%, black)` };
+  }
+  return { bg: `color-mix(in srgb, ${hex} 14%, white)`, border: "transparent", color: hex };
+}
+
+function tagStyleAttr(tagName) {
+  const hex = getTagColor(tagName);
+  if (!hex) return "";
+  const tone = chipTone(hex);
+  return ` style="--tag-bg:${tone.bg}; --tag-color:${tone.color}; --tag-border:${tone.border};"`;
 }
 
 function sortFiles(files) {
@@ -355,7 +456,7 @@ function addComment() {
   const path = file.path;
   file.comments = [...file.comments, ""];
   render();
-  const areas = document.querySelectorAll(".fm-comment-area");
+  const areas = document.querySelectorAll(".bm-comment-area");
   const last = areas[areas.length - 1];
   if (last) last.focus();
   pushUndo("Add comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
@@ -552,6 +653,7 @@ async function savePredefinedTags(tags) {
 }
 
 function openTagManager() {
+  if (state.aboutOpen) closeAbout();
   // origName tracks each row's starting name so a save can tell a rename (row kept,
   // name changed) apart from a brand-new row (origName ""), and detect deletions
   // (an origName with no surviving row) — see computeTagChanges.
@@ -632,6 +734,7 @@ function reconcileActiveTags(renameMap, removedNames) {
 
 function closeTagManager(save) {
   stopRecordingShortcut();
+  closeColorPicker();
   if (save) {
     const { renameMap, removedNames } = computeTagChanges(state.predefinedTags, state.tagModalDraft);
     const prevPredefinedTags = state.predefinedTags.map((t) => ({ ...t }));
@@ -659,6 +762,7 @@ function addDraftTagRow() {
 
 function removeDraftTagRow(idx) {
   if (state.recordingShortcutIdx === idx) stopRecordingShortcut();
+  if (state.colorPicker && state.colorPicker.idx === idx) closeColorPicker();
   state.tagModalDraft.splice(idx, 1);
   render();
 }
@@ -703,6 +807,61 @@ function startRecordingShortcut(idx) {
   document.addEventListener("keydown", handler, true);
 }
 
+// ---- Tag row color picker (SV field + hue slider + RGB inputs) ----
+
+let colorPickerOutsideHandler = null;
+
+function attachColorPickerOutsideHandler() {
+  detachColorPickerOutsideHandler();
+  colorPickerOutsideHandler = (e) => {
+    if (e.target.closest(".bm-color-popover") || e.target.closest(".bm-tagrow-swatch")) return;
+    closeColorPicker();
+  };
+  // Bubble phase, not capture: a click on e.g. "Save changes" should still reach
+  // that button's own handler before this closes the popover out from under it.
+  document.addEventListener("click", colorPickerOutsideHandler);
+}
+
+function detachColorPickerOutsideHandler() {
+  if (colorPickerOutsideHandler) {
+    document.removeEventListener("click", colorPickerOutsideHandler);
+    colorPickerOutsideHandler = null;
+  }
+}
+
+function openColorPicker(idx) {
+  const hex = state.tagModalDraft[idx].color || "#006E47";
+  const { r, g, b } = hexToRgb(hex);
+  state.colorPicker = { idx, ...rgbToHsv(r, g, b) };
+  attachColorPickerOutsideHandler();
+  render();
+}
+
+function closeColorPicker() {
+  if (!state.colorPicker) return;
+  state.colorPicker = null;
+  detachColorPickerOutsideHandler();
+  render();
+}
+
+function toggleColorPicker(idx) {
+  if (state.colorPicker && state.colorPicker.idx === idx) closeColorPicker();
+  else openColorPicker(idx);
+}
+
+// Generic press-drag-release helper: listens on `document` (not the element
+// itself) for the duration of the drag, same pattern as the shortcut recorder
+// above, so it survives the full re-render every move triggers.
+function beginPointerDrag(onMove) {
+  const move = (ev) => onMove(ev);
+  const up = () => {
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+  };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+}
+
 // Ctrl+Z (Cmd+Z on macOS, though this app targets Windows) mirrors the toolbar
 // Undo button. Skipped while focus is in a text field so the browser's own
 // native undo-within-a-field still works for in-progress typing — same guard
@@ -713,6 +872,15 @@ document.addEventListener("keydown", (e) => {
   if (combo !== "Ctrl+Z" && combo !== "Cmd+Z") return;
   e.preventDefault();
   performUndo();
+});
+
+// Escape closes whichever modal is open (color picker first, since it's "inside"
+// the tag manager), mirroring the ✕/Cancel/Close affordances each already has.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (state.colorPicker) closeColorPicker();
+  else if (state.tagModalOpen) closeTagManager(false);
+  else if (state.aboutOpen) closeAbout();
 });
 
 // Global shortcut dispatch: toggles the matching predefined tag on the selected file.
@@ -737,20 +905,74 @@ function el(html) {
 
 function render() {
   app.innerHTML = "";
-  app.appendChild(renderSidebar());
-  app.appendChild(renderMain());
+  app.appendChild(renderTitlebar());
+  const body = el(`<div class="bm-body ${getSelected() ? "" : "bm-no-preview"}"></div>`);
+  body.appendChild(renderRail());
+  body.appendChild(renderMain());
   const selected = getSelected();
-  if (selected) app.appendChild(renderPreview(selected));
-  if (state.tagModalOpen) app.appendChild(renderTagManager());
+  if (selected) body.appendChild(renderPreview(selected));
+  app.appendChild(body);
+  if (state.tagModalOpen) {
+    const overlay = renderTagManager();
+    app.appendChild(overlay);
+    // Needs real layout (getBoundingClientRect), so this only makes sense once
+    // the overlay is actually attached — hence the separate pass after append.
+    if (state.colorPicker) positionColorPopover(overlay);
+  }
+  if (state.aboutOpen) app.appendChild(renderAbout());
+}
+
+// ---- Title bar ----
+// The window is frameless (see main.js) so the app draws its own chrome and
+// wires the three controls to real window operations over IPC.
+function renderTitlebar() {
+  const bar = el(`
+    <div class="bm-titlebar">
+      <div class="bm-titlebar-brand">
+        ${appMark(18)}
+        <span class="bm-titlebar-title">BillManager</span>
+      </div>
+      <div class="bm-titlebar-controls">
+        <button class="bm-titlebar-btn" id="win-minimize" title="Minimize">${ICONS.winMinimize}</button>
+        <button class="bm-titlebar-btn" id="win-maximize" title="${state.windowMaximized ? "Restore" : "Maximize"}">${state.windowMaximized ? ICONS.winRestore : ICONS.winMaximize}</button>
+        <button class="bm-titlebar-btn bm-titlebar-close" id="win-close" title="Close">${ICONS.winClose}</button>
+      </div>
+    </div>
+  `);
+  bar.querySelector("#win-minimize").addEventListener("click", () => window.api.windowMinimize());
+  bar.querySelector("#win-maximize").addEventListener("click", () => window.api.windowMaximizeToggle());
+  bar.querySelector("#win-close").addEventListener("click", () => window.api.windowClose());
+  return bar;
 }
 
 // ---- Updates ----
 // The main process owns autoUpdater and only reports status back over
 // "update-status" — nothing here talks to GitHub directly. Each handler just
-// mirrors that status into state and re-renders the sidebar footer.
+// mirrors that status into state and re-renders.
+//
+// "not-available" is shown only briefly (see NOT_AVAILABLE_DISPLAY_MS below):
+// after the startup auto-check confirms there's nothing new, sitting on "Up to
+// date" forever would be a permanent, slightly odd fixture in the footer — it
+// reverts back to the normal "Check for updates" button on its own instead.
+// Every other status (available/downloading/downloaded/error) is left as-is,
+// since those need a person to actually do something about them.
+const NOT_AVAILABLE_DISPLAY_MS = 4000;
+let notAvailableResetTimer = null;
+
 function setUpdateStatus(status) {
+  if (notAvailableResetTimer) {
+    clearTimeout(notAvailableResetTimer);
+    notAvailableResetTimer = null;
+  }
   state.updateStatus = status;
   render();
+  if (status.state === "not-available") {
+    notAvailableResetTimer = setTimeout(() => {
+      notAvailableResetTimer = null;
+      state.updateStatus = { state: "idle" };
+      render();
+    }, NOT_AVAILABLE_DISPLAY_MS);
+  }
 }
 
 async function checkForUpdates() {
@@ -774,34 +996,51 @@ function openReleasesPage() {
   window.api.openReleasesPage();
 }
 
-function renderUpdateFooter() {
+// One line of caption text summarizing update state — used in both the sidebar
+// footer and the About window (which shows it next to the version number).
+function updateStatusLabel() {
   const s = state.updateStatus;
-  let body;
+  if (s.state === "checking") return "Checking for updates…";
+  if (s.state === "available" || s.state === "available-manual") return "Update available";
+  if (s.state === "downloading") return `Downloading… ${s.percent ?? 0}%`;
+  if (s.state === "downloaded") return "Update ready to install";
+  if (s.state === "not-available") return "Up to date";
+  if (s.state === "error") return "Update check failed";
+  return "";
+}
+
+function renderRailFooter() {
+  const s = state.updateStatus;
+  let action;
   if (s.state === "checking") {
-    body = `<span class="fm-update-text">${ICONS.refresh} Checking for updates…</span>`;
+    action = `<span class="bm-rail-update-row">${ICONS.refresh} Checking for updates…</span>`;
   } else if (s.state === "available") {
-    body = `<button class="fm-update-action" id="update-download">${ICONS.download} Download update ${s.version}</button>`;
+    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-download">${ICONS.download} Download update ${s.version}</button>`;
   } else if (s.state === "available-manual") {
-    body = `<button class="fm-update-action" id="update-manual">${ICONS.download} Get update ${s.version} (opens browser)</button>`;
+    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-manual">${ICONS.download} Get update ${s.version}</button>`;
   } else if (s.state === "downloading") {
-    body = `<span class="fm-update-text">${ICONS.download} Downloading… ${s.percent ?? 0}%</span>`;
+    action = `<span class="bm-rail-update-row">${ICONS.download} Downloading… ${s.percent ?? 0}%</span>`;
   } else if (s.state === "downloaded") {
-    body = `<button class="fm-update-action" id="update-restart">${ICONS.check} Restart to install ${s.version}</button>`;
+    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-restart">${ICONS.check} Restart to install</button>`;
   } else if (s.state === "not-available") {
-    body = `<span class="fm-update-text">${ICONS.check} Up to date</span>`;
+    action = `<span class="bm-rail-update-row bm-rail-update-clickable" id="update-recheck">${ICONS.check} Up to date</span>`;
   } else if (s.state === "error") {
-    body = `<span class="fm-update-text fm-update-error" title="${(s.message || "").replace(/"/g, "&quot;")}">Update check failed</span>`;
+    action = `<span class="bm-rail-update-row bm-rail-update-error bm-rail-update-clickable" id="update-recheck" title="${(s.message || "").replace(/"/g, "&quot;")}">Update check failed</span>`;
   } else {
-    body = `<button class="fm-update-action" id="update-check">${ICONS.refresh} Check for updates</button>`;
+    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-check">Check for updates</button>`;
   }
 
   const footer = el(`
-    <div class="fm-update-footer">
-      <span class="fm-update-version">v${state.appVersion}</span>
-      ${body}
+    <div class="bm-rail-footer">
+      <div class="bm-rail-footer-row">
+        <span>Version ${state.appVersion}</span>
+        <button class="bm-rail-link" id="about-link">About</button>
+      </div>
+      ${action}
     </div>
   `);
 
+  footer.querySelector("#about-link").addEventListener("click", openAbout);
   const checkBtn = footer.querySelector("#update-check");
   if (checkBtn) checkBtn.addEventListener("click", checkForUpdates);
   const downloadBtn = footer.querySelector("#update-download");
@@ -810,100 +1049,97 @@ function renderUpdateFooter() {
   if (manualBtn) manualBtn.addEventListener("click", openReleasesPage);
   const restartBtn = footer.querySelector("#update-restart");
   if (restartBtn) restartBtn.addEventListener("click", restartToInstall);
-  // "Up to date"/"failed" are transient — clicking them re-checks like the idle button does.
-  if (s.state === "not-available" || s.state === "error") {
-    footer.querySelector(".fm-update-text").addEventListener("click", checkForUpdates);
-    footer.classList.add("fm-update-clickable");
-  }
+  const recheckBtn = footer.querySelector("#update-recheck");
+  if (recheckBtn) recheckBtn.addEventListener("click", checkForUpdates);
 
   return footer;
 }
 
-function renderSidebar() {
+function renderRail() {
   const tags = getAllTags();
   const folderTree = state.folder ? buildFolderTree(state.files) : null;
   const untaggedCount = state.files.filter((f) => f.tags.length === 0).length;
-  const sidebar = el(`
-    <aside class="fm-sidebar">
-      <div class="fm-brand">
-        <div>
-          <div class="fm-brand-title">BillManager</div>
-          <div class="fm-brand-sub">File Archive</div>
-        </div>
+  const rail = el(`
+    <aside class="bm-rail">
+      <div class="bm-rail-brand">
+        <div class="bm-rail-title">BillManager</div>
+        <div class="bm-rail-sub">Anabaptist Brotherhood · File Archive</div>
       </div>
-      <button class="fm-folder-btn" id="choose-folder">${ICONS.upload} Choose folder</button>
-      ${
-        state.folder
-          ? `<div class="fm-folder-path-row">
-               <div class="fm-folder-path">${state.folder}</div>
-               <button class="fm-refresh-btn ${state.refreshing ? "spinning" : ""}" id="refresh-folder-btn" title="Refresh — rescan this folder for changes" ${state.refreshing ? "disabled" : ""}>${ICONS.refresh}</button>
-             </div>`
-          : `<div class="fm-hint">Pick a folder to browse its PDFs, JPGs, and PNGs.</div>`
-      }
-      ${
-        state.folder
-          ? `
-      <div class="fm-nav-item ${state.activeTags.size === 0 && !state.activeFolder && !state.untaggedOnly ? "active" : ""}" id="nav-all">
-        <span style="display:flex;align-items:center;gap:7px">${ICONS.folder} All files</span>
-        <span class="fm-nav-count">${state.files.length}</span>
-      </div>
-      ${
-        folderTree.children.size > 0
-          ? `<div class="fm-folder-nav-list" id="folder-nav-list">${renderFolderTree(folderTree, 0)}</div>`
-          : ""
-      }
-      <div class="fm-tags-heading-row">
-        <div class="fm-tags-heading">Tags</div>
-        <button class="fm-manage-tags-btn" id="manage-tags-btn" title="Manage predefined tags">${ICONS.pencil} Manage</button>
-      </div>
-      <div class="fm-tag-nav-list" id="tag-nav-list">
-        <div class="fm-tag-nav ${state.untaggedOnly ? "active" : ""}" id="nav-untagged">
-          ${ICONS.tag}
-          <span class="fm-tag-nav-name">No tags</span>
-          <span class="fm-nav-count">${untaggedCount}</span>
+      <div class="bm-rail-scroll">
+        <div class="bm-choose-folder-wrap">
+          <button class="bm-btn bm-btn-reversed bm-btn-block" id="choose-folder">${ICONS.upload} Choose folder</button>
+          ${
+            state.folder
+              ? `<div class="bm-rail-path-row">
+                   <div class="bm-rail-path">${state.folder}</div>
+                   <button class="bm-refresh-btn ${state.refreshing ? "spinning" : ""}" id="refresh-folder-btn" title="Refresh — rescan this folder for changes" ${state.refreshing ? "disabled" : ""}>${ICONS.refresh}</button>
+                 </div>`
+              : `<div class="bm-rail-hint">Pick a folder to browse its PDFs, JPGs, and PNGs.</div>`
+          }
         </div>
         ${
-          tags.length === 0
-            ? `<div style="font-size:12px;color:#6f7480;padding:4px 10px;">No tags yet</div>`
-            : tags
-                .map(([tag, count]) => {
-                  const color = getTagColor(tag);
-                  return `
-              <div class="fm-tag-nav ${state.activeTags.has(tag) ? "active" : ""}" data-tag="${tag}">
-                ${color ? `<span class="fm-tag-dot" style="background:${color}"></span>` : ICONS.tag}
-                <span class="fm-tag-nav-name">${tag}</span>
-                <span class="fm-nav-count">${count}</span>
-              </div>`;
-                })
-                .join("")
+          state.folder
+            ? `
+        <div class="bm-rail-label">Folders</div>
+        <div class="bm-nav-item ${state.activeTags.size === 0 && !state.activeFolder && !state.untaggedOnly ? "active" : ""}" id="nav-all">
+          <span class="bm-nav-name">${ICONS.folder}All files</span>
+          <span class="bm-nav-count">${state.files.length}</span>
+        </div>
+        ${
+          folderTree.children.size > 0
+            ? `<div class="bm-folder-nav-list" id="folder-nav-list">${renderFolderTree(folderTree, 0)}</div>`
+            : ""
         }
-      </div>`
-          : ""
-      }
+        <div class="bm-rail-label-row">
+          <div class="bm-rail-label">Tags</div>
+          <button class="bm-rail-link" id="manage-tags-btn" title="Manage predefined tags">Manage</button>
+        </div>
+        <div class="bm-tag-nav-list" id="tag-nav-list">
+          <div class="bm-tag-nav dim ${state.untaggedOnly ? "active" : ""}" id="nav-untagged">
+            <span class="bm-tag-nav-name">No tags</span>
+            <span class="bm-nav-count">${untaggedCount}</span>
+          </div>
+          ${
+            tags.length === 0
+              ? `<div class="bm-rail-empty">No tags yet</div>`
+              : tags
+                  .map(([tag, count]) => {
+                    return `
+              <div class="bm-tag-nav ${state.activeTags.has(tag) ? "active" : ""}" data-tag="${tag}">
+                <span class="bm-tag-nav-name">${tag}</span>
+                <span class="bm-nav-count">${count}</span>
+              </div>`;
+                  })
+                  .join("")
+          }
+        </div>`
+            : ""
+        }
+      </div>
     </aside>
   `);
 
-  sidebar.querySelector("#choose-folder").addEventListener("click", chooseFolder);
-  const refreshBtn = sidebar.querySelector("#refresh-folder-btn");
+  rail.querySelector("#choose-folder").addEventListener("click", chooseFolder);
+  const refreshBtn = rail.querySelector("#refresh-folder-btn");
   if (refreshBtn) refreshBtn.addEventListener("click", refreshFiles);
-  const manageBtn = sidebar.querySelector("#manage-tags-btn");
+  const manageBtn = rail.querySelector("#manage-tags-btn");
   if (manageBtn) manageBtn.addEventListener("click", openTagManager);
-  const navAll = sidebar.querySelector("#nav-all");
+  const navAll = rail.querySelector("#nav-all");
   if (navAll) navAll.addEventListener("click", () => { state.activeTags = new Set(); state.activeFolder = null; state.untaggedOnly = false; render(); });
-  const navUntagged = sidebar.querySelector("#nav-untagged");
+  const navUntagged = rail.querySelector("#nav-untagged");
   if (navUntagged) navUntagged.addEventListener("click", () => {
     state.untaggedOnly = !state.untaggedOnly;
     if (state.untaggedOnly) state.activeTags = new Set();
     render();
   });
-  sidebar.querySelectorAll(".fm-folder-nav").forEach((elm) => {
+  rail.querySelectorAll(".bm-nav-item[data-folder]").forEach((elm) => {
     elm.addEventListener("click", () => {
       const p = elm.dataset.folder;
       state.activeFolder = state.activeFolder === p ? null : p;
       render();
     });
   });
-  sidebar.querySelectorAll(".fm-tag-nav[data-tag]").forEach((elm) => {
+  rail.querySelectorAll(".bm-tag-nav[data-tag]").forEach((elm) => {
     elm.addEventListener("click", () => {
       const t = elm.dataset.tag;
       state.untaggedOnly = false;
@@ -913,51 +1149,60 @@ function renderSidebar() {
     });
   });
 
-  sidebar.appendChild(renderUpdateFooter());
+  rail.appendChild(renderRailFooter());
 
-  return sidebar;
+  return rail;
 }
 
 function renderMain() {
   const filtered = state.folder ? getFiltered() : [];
   const main = el(`
-    <main class="fm-main">
-      <div class="fm-topbar">
-        <div class="fm-search">
-          ${ICONS.search}
-          <input id="search-input" placeholder="Search files by name…" value="${state.search.replace(/"/g, "&quot;")}" ${state.folder ? "" : "disabled"} />
+    <main class="bm-main">
+      <div class="bm-toolbar">
+        <div class="bm-field bm-toolbar-search">
+          <label class="bm-field-label" for="search-input">Search</label>
+          <div class="bm-search-input-wrap">
+            ${ICONS.search}
+            <input class="bm-input" id="search-input" placeholder="Search files by name…" value="${state.search.replace(/"/g, "&quot;")}" ${state.folder ? "" : "disabled"} />
+          </div>
         </div>
-        <div class="fm-sort">
-          <label for="sort-select">Sort</label>
-          <select id="sort-select" ${state.folder ? "" : "disabled"}>
+        <div class="bm-field bm-toolbar-sort">
+          <label class="bm-field-label" for="sort-select">Sort</label>
+          <select class="bm-select" id="sort-select" ${state.folder ? "" : "disabled"}>
             <option value="name" ${state.sortBy === "name" ? "selected" : ""}>Name (A–Z)</option>
-            <option value="date" ${state.sortBy === "date" ? "selected" : ""}>Date created (newest)</option>
+            <option value="date" ${state.sortBy === "date" ? "selected" : ""}>Newest first</option>
             <option value="tag" ${state.sortBy === "tag" ? "selected" : ""}>Tag (A–Z)</option>
           </select>
         </div>
-        <button class="fm-undo-btn" id="undo-btn" ${undoStack.length === 0 ? "disabled" : ""}
+        <button class="bm-btn bm-btn-ghost bm-btn-sm bm-toolbar-undo" id="undo-btn" ${undoStack.length === 0 ? "disabled" : ""}
           title="${undoStack.length > 0 ? `Undo: ${undoStack[undoStack.length - 1].label} (Ctrl+Z)` : "Nothing to undo"}">
           ${ICONS.undo} Undo
         </button>
+      </div>
+      <div class="bm-active-filters">
         ${
           state.activeFolder
-            ? `<div class="fm-active-filter">${ICONS.folder} ${state.activeFolder} <button id="clear-folder">${ICONS.x}</button></div>`
+            ? `<div class="bm-active-filter">${ICONS.folder} ${state.activeFolder} <button id="clear-folder">${ICONS.x}</button></div>`
             : ""
         }
         ${
           state.untaggedOnly
-            ? `<div class="fm-active-filter">${ICONS.tag} No tags <button id="clear-untagged">${ICONS.x}</button></div>`
+            ? `<div class="bm-active-filter">${ICONS.tag} No tags <button id="clear-untagged">${ICONS.x}</button></div>`
             : ""
         }
         ${[...state.activeTags]
           .map(
             (t) =>
-              `<div class="fm-active-filter"${chipStyleAttr(t)}>${ICONS.tag} ${t} <button class="fm-clear-tag-btn" data-tag="${t.replace(/"/g, "&quot;")}">${ICONS.x}</button></div>`
+              `<div class="bm-active-filter"${tagStyleAttr(t)}>${ICONS.tag} ${t} <button class="bm-clear-tag-btn" data-tag="${t.replace(/"/g, "&quot;")}">${ICONS.x}</button></div>`
           )
           .join("")}
       </div>
-      <div class="fm-bulkbar-wrap" id="bulkbar-wrap"></div>
-      <div class="fm-grid-wrap" id="grid-wrap"></div>
+      <div class="bm-rule-row">
+        <label class="bm-checkbox-label"><input type="checkbox" id="select-all-checkbox" disabled /> Select all ${filtered.length}</label>
+        <div class="bm-rule-row-meta" id="rule-row-meta"></div>
+      </div>
+      <div class="bm-bulkbar-wrap" id="bulkbar-wrap"></div>
+      <div class="bm-grid-wrap" id="grid-wrap"></div>
     </main>
   `);
 
@@ -965,12 +1210,14 @@ function renderMain() {
   searchInput.addEventListener("input", (e) => {
     state.search = e.target.value;
     const nowFiltered = getFiltered();
+    renderRuleRowInto(main, nowFiltered);
     renderBulkBarInto(main.querySelector("#bulkbar-wrap"), nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
   main.querySelector("#sort-select").addEventListener("change", (e) => {
     state.sortBy = e.target.value;
     const nowFiltered = getFiltered();
+    renderRuleRowInto(main, nowFiltered);
     renderBulkBarInto(main.querySelector("#bulkbar-wrap"), nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
@@ -979,77 +1226,82 @@ function renderMain() {
   if (clearFolderBtn) clearFolderBtn.addEventListener("click", () => { state.activeFolder = null; render(); });
   const clearUntaggedBtn = main.querySelector("#clear-untagged");
   if (clearUntaggedBtn) clearUntaggedBtn.addEventListener("click", () => { state.untaggedOnly = false; render(); });
-  main.querySelectorAll(".fm-clear-tag-btn").forEach((btn) => {
+  main.querySelectorAll(".bm-clear-tag-btn").forEach((btn) => {
     btn.addEventListener("click", () => { state.activeTags.delete(btn.dataset.tag); render(); });
   });
 
+  renderRuleRowInto(main, filtered);
   renderBulkBarInto(main.querySelector("#bulkbar-wrap"), filtered);
   renderGridInto(main.querySelector("#grid-wrap"), filtered);
   return main;
 }
 
-// Bulk-selection bar above the grid: a "select all (currently filtered)" checkbox,
-// plus — once anything is checked — a destination picker and Move/Clear actions.
-// Rendered into its own container (like renderGridInto) so search/sort updates
-// can refresh it without a full app re-render.
+// The "Select all N / N FILES · N FOLDERS" rule row above the grid. Rendered
+// into the already-mounted toolbar so search/sort updates can refresh it
+// without a full app re-render (see renderMain's input/change listeners).
+function renderRuleRowInto(main, filtered) {
+  if (!state.folder) {
+    main.querySelector("#select-all-checkbox").disabled = true;
+    main.querySelector("#select-all-checkbox").checked = false;
+    main.querySelector("#rule-row-meta").textContent = "";
+    return;
+  }
+  const checkedInFiltered = filtered.filter((f) => state.checked.has(f.path)).length;
+  const allFilteredChecked = filtered.length > 0 && checkedInFiltered === filtered.length;
+  const label = main.querySelector(".bm-checkbox-label");
+  label.lastChild.textContent = ` Select all ${filtered.length}`;
+  const cb = main.querySelector("#select-all-checkbox");
+  cb.disabled = filtered.length === 0;
+  cb.checked = allFilteredChecked;
+  cb.indeterminate = checkedInFiltered > 0 && !allFilteredChecked;
+  cb.onchange = () => {
+    if (cb.checked) filtered.forEach((f) => state.checked.add(f.path));
+    else filtered.forEach((f) => state.checked.delete(f.path));
+    render();
+  };
+  const folderCount = new Set(filtered.map((f) => f.dir).filter(Boolean)).size;
+  main.querySelector("#rule-row-meta").textContent = `${filtered.length} FILES · ${folderCount} FOLDERS`;
+}
+
+// Bulk-selection actions bar above the grid — only shown once something is
+// checked. Rendered into its own container (like renderGridInto) so search/sort
+// updates can refresh it without a full app re-render.
 function renderBulkBarInto(container, filtered) {
   container.innerHTML = "";
-  if (!state.folder || filtered.length === 0) return;
-
-  const checkedInFiltered = filtered.filter((f) => state.checked.has(f.path)).length;
-  const allFilteredChecked = checkedInFiltered === filtered.length;
+  if (!state.folder || state.checked.size === 0) return;
 
   const bar = el(`
-    <div class="fm-bulkbar">
-      <label class="fm-bulk-selectall">
-        <input type="checkbox" id="select-all-checkbox" />
-        <span>${state.checked.size > 0 ? `${state.checked.size} selected` : `Select all ${filtered.length}`}</span>
-      </label>
-      ${
-        state.checked.size > 0
-          ? `<div class="fm-bulk-actions">
-              ${
-                state.allFolders.length > 0
-                  ? `<select id="bulk-move-select" title="Move ${state.checked.size} selected file${state.checked.size === 1 ? "" : "s"} to…">
-                      <option value="">Root folder</option>
-                      ${state.allFolders
-                        .map((f) => `<option value="${f.replace(/"/g, "&quot;")}">${f}</option>`)
-                        .join("")}
-                    </select>
-                    <button class="fm-btn-primary" id="bulk-move-btn">${ICONS.folder} Move</button>`
-                  : `<span class="fm-tag-hint">No other subfolders to move into yet.</span>`
-              }
-              <button class="fm-btn-danger" id="bulk-delete-btn">${ICONS.trash} Delete</button>
-              <button class="fm-btn-secondary" id="bulk-clear-btn">Clear</button>
-            </div>`
-          : ""
-      }
+    <div class="bm-bulkbar">
+      <span class="bm-bulk-hint">${state.checked.size} selected</span>
+      <div class="bm-bulk-actions">
+        ${
+          state.allFolders.length > 0
+            ? `<select class="bm-select" id="bulk-move-select" title="Move ${state.checked.size} selected file${state.checked.size === 1 ? "" : "s"} to…">
+                <option value="">Root folder</option>
+                ${state.allFolders
+                  .map((f) => `<option value="${f.replace(/"/g, "&quot;")}">${f}</option>`)
+                  .join("")}
+              </select>
+              <button class="bm-btn bm-btn-secondary bm-btn-sm" id="bulk-move-btn">${ICONS.folder} Move</button>`
+            : `<span class="bm-bulk-hint">No other subfolders to move into yet.</span>`
+        }
+        <button class="bm-btn bm-btn-danger bm-btn-sm" id="bulk-delete-btn">${ICONS.trash} Delete</button>
+        <button class="bm-btn bm-btn-ghost bm-btn-sm" id="bulk-clear-btn">Clear</button>
+      </div>
     </div>
   `);
 
-  const selectAllCb = bar.querySelector("#select-all-checkbox");
-  selectAllCb.checked = allFilteredChecked;
-  selectAllCb.indeterminate = checkedInFiltered > 0 && !allFilteredChecked;
-  selectAllCb.addEventListener("change", () => {
-    if (selectAllCb.checked) filtered.forEach((f) => state.checked.add(f.path));
-    else filtered.forEach((f) => state.checked.delete(f.path));
-    render();
-  });
   const moveBtn = bar.querySelector("#bulk-move-btn");
   if (moveBtn) {
     moveBtn.addEventListener("click", () => {
       bulkMoveChecked(bar.querySelector("#bulk-move-select").value);
     });
   }
-  const deleteBtn = bar.querySelector("#bulk-delete-btn");
-  if (deleteBtn) deleteBtn.addEventListener("click", bulkDeleteChecked);
-  const clearBtn = bar.querySelector("#bulk-clear-btn");
-  if (clearBtn) {
-    clearBtn.addEventListener("click", () => {
-      state.checked = new Set();
-      render();
-    });
-  }
+  bar.querySelector("#bulk-delete-btn").addEventListener("click", bulkDeleteChecked);
+  bar.querySelector("#bulk-clear-btn").addEventListener("click", () => {
+    state.checked = new Set();
+    render();
+  });
 
   container.appendChild(bar);
 }
@@ -1059,10 +1311,10 @@ function renderGridInto(container, filtered) {
   if (!state.folder) {
     container.appendChild(
       el(`
-      <div class="fm-empty">
+      <div class="bm-empty">
         ${ICONS.emptyFolder}
-        <div class="fm-empty-title">No folder open</div>
-        <div class="fm-empty-sub">Choose a folder from the sidebar to browse and catalog its PDFs, JPGs, and PNGs.</div>
+        <div class="bm-empty-title">No folder open</div>
+        <div class="bm-empty-sub">Choose a folder from the sidebar to browse and catalog its PDFs, JPGs, and PNGs.</div>
       </div>
     `)
     );
@@ -1072,10 +1324,10 @@ function renderGridInto(container, filtered) {
   if (filtered.length === 0) {
     container.appendChild(
       el(`
-      <div class="fm-empty">
+      <div class="bm-empty">
         ${ICONS.emptyFolder}
-        <div class="fm-empty-title">${state.files.length === 0 ? "This folder is empty" : "Nothing matches"}</div>
-        <div class="fm-empty-sub">${
+        <div class="bm-empty-title">${state.files.length === 0 ? "This folder is empty" : "Nothing matches"}</div>
+        <div class="bm-empty-sub">${
           state.files.length === 0
             ? "No PDFs, JPGs, or PNGs found in this folder or its subfolders."
             : "Try a different search term or clear the active tag/folder filter."
@@ -1086,27 +1338,29 @@ function renderGridInto(container, filtered) {
     return;
   }
 
-  const grid = el(`<div class="fm-grid"></div>`);
+  const grid = el(`<div class="bm-grid"></div>`);
   filtered.forEach((f) => {
     const isSelected = state.selectedPath === f.path;
     const card = el(`
-      <div class="fm-card ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
-        <div class="fm-card-tab ${f.ext === ".pdf" ? "pdf" : "img"}">${extLabel(f.ext)}</div>
-        <input type="checkbox" class="fm-card-check" title="Select for bulk action" />
-        <button class="fm-card-open" data-open title="Open file">${ICONS.open}</button>
-        <div class="fm-card-thumb">${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}</div>
-        <div class="fm-card-body">
-          <div class="fm-card-name">${f.name}</div>
-          <div class="fm-card-meta">${formatSize(f.size)} · ${formatDate(f.mtime)}</div>
-          ${f.dir ? `<div class="fm-card-dir" title="${f.dir.replace(/"/g, "&quot;")}">${ICONS.folder} ${f.dir}</div>` : ""}
+      <div class="bm-card ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
+        <div class="bm-card-thumb">
+          <div class="bm-card-kind">${extLabel(f.ext)}</div>
+          <input type="checkbox" class="bm-card-check" title="Select for bulk action" />
+          ${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}
+          <button class="bm-card-open" data-open title="Open file">${ICONS.open}</button>
+        </div>
+        <div class="bm-card-body">
+          <div class="bm-card-name">${f.name}</div>
+          <div class="bm-card-meta">${formatSize(f.size)} · ${formatDate(f.mtime)}</div>
+          ${f.dir ? `<div class="bm-card-dir" title="${f.dir.replace(/"/g, "&quot;")}">${ICONS.folder} ${f.dir}</div>` : ""}
           ${
             f.tags.length > 0
-              ? `<div class="fm-card-tags">
+              ? `<div class="bm-card-tags">
                   ${f.tags
                     .slice(0, 3)
-                    .map((t) => `<span class="fm-chip"${chipStyleAttr(t)}>${t}</span>`)
+                    .map((t) => `<span class="bm-tag"${tagStyleAttr(t)}>${t}</span>`)
                     .join("")}
-                  ${f.tags.length > 3 ? `<span class="fm-chip-more">+${f.tags.length - 3}</span>` : ""}
+                  ${f.tags.length > 3 ? `<span class="bm-tag-more">+${f.tags.length - 3}</span>` : ""}
                 </div>`
               : ""
           }
@@ -1124,7 +1378,7 @@ function renderGridInto(container, filtered) {
       e.stopPropagation();
       openFile(f.path);
     });
-    const checkbox = card.querySelector(".fm-card-check");
+    const checkbox = card.querySelector(".bm-card-check");
     checkbox.checked = state.checked.has(f.path);
     checkbox.addEventListener("click", (e) => {
       e.stopPropagation(); // don't also select this card for preview
@@ -1139,92 +1393,95 @@ function renderGridInto(container, filtered) {
 
 function renderPreview(file) {
   const panel = el(`
-    <aside class="fm-preview">
-      <div class="fm-preview-header">
-        <div class="fm-preview-header-top">
-          <div class="fm-preview-name">${file.name}</div>
-          <button class="fm-open-btn" id="open-file-btn" title="Open in default app">${ICONS.open} Open</button>
+    <aside class="bm-preview">
+      <div class="bm-preview-header">
+        <div class="bm-preview-header-top">
+          <div class="bm-preview-name">${file.name}</div>
+          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="open-file-btn" title="Open in default app">${ICONS.open} Open</button>
         </div>
-        ${file.dir ? `<div class="fm-preview-dir">${ICONS.folder} ${file.dir}</div>` : ""}
-        <div class="fm-preview-meta">
-          <span>${extLabel(file.ext)}</span>
-          <span>${formatSize(file.size)}</span>
-          <span>${formatDate(file.mtime)}</span>
+        <div class="bm-preview-meta">
+          ${extLabel(file.ext)} · ${formatSize(file.size)} · ${formatDate(file.mtime)}${file.dir ? ` · ${file.dir}` : ""}
+        </div>
+        <div class="bm-preview-delete-row">
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="delete-btn">${ICONS.trash} Delete file</button>
         </div>
       </div>
-      <div class="fm-preview-frame-wrap" id="preview-frame-wrap" title="Double-click to open in default app">
+      <div class="bm-preview-plate" id="preview-frame-wrap" title="Double-click to open in default app">
         ${
           file.ext === ".pdf"
             ? `<embed src="${file.url}" type="application/pdf" />`
             : `<img src="${file.url}" alt="${file.name}" />`
         }
       </div>
-      <div class="fm-preview-scroll">
+      <div class="bm-preview-scroll">
         ${
           state.allFolders.length > 0
-            ? `<div class="fm-section-label">${ICONS.folder} Location</div>
-        <div class="fm-move-row">
-          <select id="move-select" title="Move to a different subfolder">
-            <option value="" ${file.dir === "" ? "selected" : ""}>Root folder</option>
-            ${state.allFolders
-              .map(
-                (f) =>
-                  `<option value="${f.replace(/"/g, "&quot;")}" ${file.dir === f ? "selected" : ""}>${f}</option>`
-              )
-              .join("")}
-          </select>
+            ? `<div>
+          <div class="bm-field">
+            <label class="bm-field-label" for="move-select">Location</label>
+            <select class="bm-select" id="move-select" title="Move to a different subfolder">
+              <option value="" ${file.dir === "" ? "selected" : ""}>Root folder</option>
+              ${state.allFolders
+                .map(
+                  (f) =>
+                    `<option value="${f.replace(/"/g, "&quot;")}" ${file.dir === f ? "selected" : ""}>${f}</option>`
+                )
+                .join("")}
+            </select>
+          </div>
         </div>`
             : ""
         }
-        <div class="fm-section-label">${ICONS.tag} Tags</div>
-        <div class="fm-tag-editor" id="tag-editor">
-          ${
-            file.tags.length === 0
-              ? `<span style="font-size:12px;color:#a89f8a;">No tags yet</span>`
-              : file.tags
-                  .map(
-                    (t) => `<span class="fm-chip-editable" data-tag="${t}"${chipStyleAttr(t)}>${t}<button data-remove-tag="${t}">${ICONS.x}</button></span>`
-                  )
-                  .join("")
-          }
-        </div>
-        <div class="fm-tag-add-row">
-          ${(() => {
-            const available = state.predefinedTags.filter((t) => !file.tags.includes(t.name));
-            if (state.predefinedTags.length === 0) {
-              return `<span class="fm-tag-hint">No predefined tags yet — <button class="fm-inline-link" id="open-tag-manager-hint">add some</button>.</span>`;
+        <div>
+          <div class="bm-section-label">Tags</div>
+          <div class="bm-tag-editor" id="tag-editor">
+            ${
+              file.tags.length === 0
+                ? `<span class="bm-tag-hint">No tags yet</span>`
+                : file.tags
+                    .map(
+                      (t) => `<span class="bm-tag" data-tag="${t}"${tagStyleAttr(t)}>${t}<button class="bm-tag-remove" data-remove-tag="${t}">${ICONS.x}</button></span>`
+                    )
+                    .join("")
             }
-            return `
-              <select id="tag-select" ${available.length === 0 ? "disabled" : ""}>
-                <option value="">${available.length === 0 ? "All tags applied" : "Add a tag…"}</option>
-                ${available
-                  .map(
-                    (t) =>
-                      `<option value="${t.name.replace(/"/g, "&quot;")}">${t.name}${t.shortcut ? ` (${t.shortcut})` : ""}</option>`
-                  )
-                  .join("")}
-              </select>`;
-          })()}
+          </div>
+          <div class="bm-tag-add-row">
+            ${(() => {
+              const available = state.predefinedTags.filter((t) => !file.tags.includes(t.name));
+              if (state.predefinedTags.length === 0) {
+                return `<span class="bm-tag-hint">No predefined tags yet — <button class="bm-inline-link" id="open-tag-manager-hint">add some</button>.</span>`;
+              }
+              return `
+                <select class="bm-select" id="tag-select" ${available.length === 0 ? "disabled" : ""}>
+                  <option value="">${available.length === 0 ? "All tags applied" : "Add a tag…"}</option>
+                  ${available
+                    .map(
+                      (t) =>
+                        `<option value="${t.name.replace(/"/g, "&quot;")}">${t.name}${t.shortcut ? ` (${t.shortcut})` : ""}</option>`
+                    )
+                    .join("")}
+                </select>`;
+            })()}
+          </div>
         </div>
-        <div class="fm-section-label">Comments</div>
-        <div class="fm-comments-list" id="comments-list">
-          ${
-            file.comments.length === 0
-              ? `<span class="fm-tag-hint">No comments yet</span>`
-              : file.comments
-                  .map(
-                    (c, i) => `
-              <div class="fm-comment-row" data-idx="${i}">
-                <textarea class="fm-comment-area" data-idx="${i}" placeholder="Write a comment…">${escapeHtml(c)}</textarea>
-                <button class="fm-comment-remove" data-idx="${i}" title="Delete comment">${ICONS.x}</button>
-              </div>`
-                  )
-                  .join("")
-          }
-        </div>
-        <button class="fm-add-comment-btn" id="add-comment-btn">${ICONS.plus} Add comment</button>
-        <div class="fm-delete-row">
-          <button class="fm-delete-btn" id="delete-btn">${ICONS.trash} Delete file</button>
+        <div>
+          <div class="bm-section-label">Comments</div>
+          <div class="bm-comments-list" id="comments-list">
+            ${
+              file.comments.length === 0
+                ? `<span class="bm-tag-hint">No comments yet</span>`
+                : file.comments
+                    .map(
+                      (c, i) => `
+                <div class="bm-comment-row" data-idx="${i}">
+                  <textarea class="bm-comment-area" data-idx="${i}" placeholder="Write a comment…">${escapeHtml(c)}</textarea>
+                  <button class="bm-comment-remove" data-idx="${i}" title="Delete comment">${ICONS.x}</button>
+                </div>`
+                    )
+                    .join("")
+            }
+          </div>
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="add-comment-btn">${ICONS.plus} Add comment</button>
         </div>
       </div>
     </aside>
@@ -1245,7 +1502,7 @@ function renderPreview(file) {
   panel.querySelectorAll("[data-remove-tag]").forEach((btn) => {
     btn.addEventListener("click", () => removeTag(btn.dataset.removeTag));
   });
-  panel.querySelectorAll(".fm-comment-area").forEach((area) => {
+  panel.querySelectorAll(".bm-comment-area").forEach((area) => {
     area.addEventListener("focus", (e) => {
       const idx = Number(e.target.dataset.idx);
       const f = getSelected();
@@ -1264,7 +1521,7 @@ function renderPreview(file) {
       pushUndo("Edit comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
     });
   });
-  panel.querySelectorAll(".fm-comment-remove").forEach((btn) => {
+  panel.querySelectorAll(".bm-comment-remove").forEach((btn) => {
     btn.addEventListener("click", () => removeComment(Number(btn.dataset.idx)));
   });
   panel.querySelector("#add-comment-btn").addEventListener("click", addComment);
@@ -1276,39 +1533,39 @@ function renderPreview(file) {
 function renderTagManager() {
   const draft = state.tagModalDraft;
   const overlay = el(`
-    <div class="fm-modal-overlay" id="tag-modal-overlay">
-      <div class="fm-modal">
-        <div class="fm-modal-header">
-          <div class="fm-modal-title">Manage predefined tags</div>
-          <div class="fm-modal-sub">Curate the tag vocabulary and assign a keyboard shortcut to toggle each tag on the selected file. Renaming or deleting a tag here updates every file that has it.</div>
+    <div class="bm-modal-overlay" id="tag-modal-overlay">
+      <div class="bm-modal">
+        <div class="bm-modal-header">
+          <div class="bm-modal-title">Manage predefined tags</div>
+          <div class="bm-modal-sub">Curate the tag vocabulary and assign a keyboard shortcut to toggle each tag on the selected file. Renaming or deleting a tag here updates every file that has it.</div>
         </div>
-        <div class="fm-modal-body">
+        <div class="bm-modal-body">
           ${
             draft.length === 0
-              ? `<div class="fm-tag-hint" style="padding:6px 0 14px;">No predefined tags yet. Add one below.</div>`
-              : `<div class="fm-tagrow-list">
+              ? `<div class="bm-tag-hint" style="padding-bottom:8px;">No predefined tags yet. Add one below.</div>`
+              : `<div class="bm-tagrow-list">
               ${draft
                 .map((t, i) => {
                   const recording = state.recordingShortcutIdx === i;
                   return `
-                <div class="fm-tagrow" data-idx="${i}">
-                  <input type="color" class="fm-tagrow-color" data-idx="${i}" value="${t.color || "#2e6b5c"}" title="Tag color" />
-                  <input class="fm-tagrow-name" data-idx="${i}" placeholder="Tag name" value="${t.name.replace(/"/g, "&quot;")}" />
-                  <button class="fm-shortcut-btn ${recording ? "recording" : ""}" data-idx="${i}">
+                <div class="bm-tagrow" data-idx="${i}">
+                  <button class="bm-tagrow-swatch" data-idx="${i}" style="background:${t.color || "#006E47"}" title="Tag color"></button>
+                  <input class="bm-input bm-tagrow-name" data-idx="${i}" placeholder="Tag name" value="${t.name.replace(/"/g, "&quot;")}" />
+                  <button class="bm-shortcut-btn ${recording ? "recording" : ""}" data-idx="${i}">
                     ${recording ? "Press a key…" : t.shortcut || "Set shortcut"}
                   </button>
-                  ${t.shortcut && !recording ? `<button class="fm-shortcut-clear" data-idx="${i}" title="Clear shortcut">${ICONS.x}</button>` : `<span class="fm-shortcut-clear-spacer"></span>`}
-                  <button class="fm-tagrow-remove" data-idx="${i}" title="Delete tag">${ICONS.trash}</button>
+                  <button class="bm-tagrow-remove" data-idx="${i}" title="Delete tag">${ICONS.x}</button>
+                  ${state.colorPicker && state.colorPicker.idx === i ? renderColorPopoverHtml() : ""}
                 </div>`;
                 })
                 .join("")}
             </div>`
           }
-          <button class="fm-add-tagrow-btn" id="add-tagrow-btn">${ICONS.plus} Add tag</button>
+          <button class="bm-add-tagrow-btn" id="add-tagrow-btn">${ICONS.plus} Add tag</button>
         </div>
-        <div class="fm-modal-footer">
-          <button class="fm-btn-secondary" id="tag-modal-cancel">Cancel</button>
-          <button class="fm-btn-primary" id="tag-modal-save">Save</button>
+        <div class="bm-modal-footer">
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="tag-modal-cancel">Cancel</button>
+          <button class="bm-btn bm-btn-primary bm-btn-sm" id="tag-modal-save">Save changes</button>
         </div>
       </div>
     </div>
@@ -1320,24 +1577,230 @@ function renderTagManager() {
   overlay.querySelector("#tag-modal-cancel").addEventListener("click", () => closeTagManager(false));
   overlay.querySelector("#tag-modal-save").addEventListener("click", () => closeTagManager(true));
   overlay.querySelector("#add-tagrow-btn").addEventListener("click", addDraftTagRow);
-  overlay.querySelectorAll(".fm-tagrow-name").forEach((input) => {
+  overlay.querySelectorAll(".bm-tagrow-name").forEach((input) => {
     input.addEventListener("input", (e) => {
       draft[Number(e.target.dataset.idx)].name = e.target.value;
     });
   });
-  overlay.querySelectorAll(".fm-tagrow-color").forEach((input) => {
-    input.addEventListener("input", (e) => {
-      draft[Number(e.target.dataset.idx)].color = e.target.value;
+  overlay.querySelectorAll(".bm-tagrow-swatch").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleColorPicker(Number(btn.dataset.idx));
     });
   });
-  overlay.querySelectorAll(".fm-shortcut-btn").forEach((btn) => {
+  overlay.querySelectorAll(".bm-shortcut-btn").forEach((btn) => {
     btn.addEventListener("click", () => startRecordingShortcut(Number(btn.dataset.idx)));
   });
-  overlay.querySelectorAll(".fm-shortcut-clear").forEach((btn) => {
-    btn.addEventListener("click", () => clearDraftShortcut(Number(btn.dataset.idx)));
-  });
-  overlay.querySelectorAll(".fm-tagrow-remove").forEach((btn) => {
+  overlay.querySelectorAll(".bm-tagrow-remove").forEach((btn) => {
     btn.addEventListener("click", () => removeDraftTagRow(Number(btn.dataset.idx)));
+  });
+
+  if (state.colorPicker) wireColorPopover(overlay);
+
+  return overlay;
+}
+
+// Markup for the color picker popover — only rendered under the tag row whose
+// swatch is currently toggled open (see renderTagManager).
+function renderColorPopoverHtml() {
+  const { h, s, v } = state.colorPicker;
+  const { r, g, b, hex } = popoverRgbHex();
+  const hueColor = `hsl(${h}, 100%, 50%)`;
+  return `
+    <div class="bm-color-popover" id="color-popover">
+      <div class="bm-sv-field" id="sv-field" style="background: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, ${hueColor});">
+        <div class="bm-sv-handle" id="sv-handle" style="left:${s * 100}%; top:${(1 - v) * 100}%; background:${hex};"></div>
+      </div>
+      <div class="bm-hue-row">
+        <div class="bm-hue-chip" style="background:${hex};"></div>
+        <div class="bm-hue-slider" id="hue-slider">
+          <div class="bm-hue-handle" id="hue-handle" style="left:${(h / 360) * 100}%;"></div>
+        </div>
+      </div>
+      <div class="bm-rgb-grid">
+        <div class="bm-field">
+          <label class="bm-field-label">R</label>
+          <input class="bm-input" id="rgb-r" type="number" min="0" max="255" value="${r}" />
+        </div>
+        <div class="bm-field">
+          <label class="bm-field-label">G</label>
+          <input class="bm-input" id="rgb-g" type="number" min="0" max="255" value="${g}" />
+        </div>
+        <div class="bm-field">
+          <label class="bm-field-label">B</label>
+          <input class="bm-input" id="rgb-b" type="number" min="0" max="255" value="${b}" />
+        </div>
+      </div>
+      <div class="bm-picker-footer">
+        <span class="bm-hex-readout">${hex}</span>
+        <button class="bm-btn bm-btn-ghost bm-btn-sm" id="color-picker-done">Done</button>
+      </div>
+    </div>
+  `;
+}
+
+// Derives {r,g,b,hex} from the current state.colorPicker h/s/v.
+function popoverRgbHex() {
+  const { h, s, v } = state.colorPicker;
+  const { r, g, b } = hsvToRgb(h, s, v);
+  return { r: Math.round(r), g: Math.round(g), b: Math.round(b), hex: rgbToHex(r, g, b) };
+}
+
+// Patches the popover's own DOM (handle positions, hue-dependent gradient, hex
+// readout, RGB inputs) and the swatch button back on the tag row — without a
+// full render(). A drag can fire many mousemove events per second; re-running
+// render() (which rebuilds the whole app, file grid included) on each one would
+// be visibly janky, and re-rendering the RGB inputs on every keystroke would
+// wipe focus/cursor mid-type. Skips writing into whichever RGB input currently
+// has focus so typing in it isn't clobbered by its own change.
+function patchColorPopover(overlay, idx) {
+  const popover = overlay.querySelector("#color-popover");
+  if (!popover) return;
+  const { h, s, v } = state.colorPicker;
+  const { r, g, b, hex } = popoverRgbHex();
+
+  const svHandle = popover.querySelector("#sv-handle");
+  svHandle.style.left = `${s * 100}%`;
+  svHandle.style.top = `${(1 - v) * 100}%`;
+  svHandle.style.background = hex;
+  popover.querySelector("#sv-field").style.background =
+    `linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))`;
+  popover.querySelector("#hue-handle").style.left = `${(h / 360) * 100}%`;
+  popover.querySelector(".bm-hue-chip").style.background = hex;
+  popover.querySelector(".bm-hex-readout").textContent = hex;
+
+  [
+    ["#rgb-r", r],
+    ["#rgb-g", g],
+    ["#rgb-b", b],
+  ].forEach(([sel, value]) => {
+    const input = popover.querySelector(sel);
+    if (document.activeElement !== input) input.value = value;
+  });
+
+  const swatch = overlay.querySelector(`.bm-tagrow-swatch[data-idx="${idx}"]`);
+  if (swatch) swatch.style.background = hex;
+}
+
+// Anchors the (position: fixed) popover under its tag row's swatch, using the
+// swatch's real on-screen position now that the modal is attached to the DOM.
+// Clamped so it can't run off the right edge on a narrower window.
+function positionColorPopover(overlay) {
+  const popover = overlay.querySelector("#color-popover");
+  const swatch = overlay.querySelector(`.bm-tagrow-swatch[data-idx="${state.colorPicker.idx}"]`);
+  if (!popover || !swatch) return;
+  const rect = swatch.getBoundingClientRect();
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 300 - 8));
+  popover.style.top = `${rect.bottom + 6}px`;
+  popover.style.left = `${left}px`;
+}
+
+// Wires interaction for the popover markup renderColorPopoverHtml() just emitted.
+// Called after renderTagManager mounts the modal, only while a picker is open.
+function wireColorPopover(overlay) {
+  const idx = state.colorPicker.idx;
+  const popover = overlay.querySelector("#color-popover");
+  if (!popover) return;
+
+  popover.addEventListener("mousedown", (e) => e.stopPropagation());
+
+  function applyHsvFromEvent(ev, rect, axis) {
+    if (axis === "sv") {
+      state.colorPicker.s = clamp(0, 1, (ev.clientX - rect.left) / rect.width);
+      state.colorPicker.v = 1 - clamp(0, 1, (ev.clientY - rect.top) / rect.height);
+    } else {
+      state.colorPicker.h = clamp(0, 1, (ev.clientX - rect.left) / rect.width) * 360;
+    }
+    state.tagModalDraft[idx].color = popoverRgbHex().hex;
+    patchColorPopover(overlay, idx);
+  }
+
+  const svField = popover.querySelector("#sv-field");
+  svField.addEventListener("mousedown", (e) => {
+    const rect = svField.getBoundingClientRect();
+    applyHsvFromEvent(e, rect, "sv");
+    beginPointerDrag((ev) => applyHsvFromEvent(ev, rect, "sv"));
+  });
+
+  const hueSlider = popover.querySelector("#hue-slider");
+  hueSlider.addEventListener("mousedown", (e) => {
+    const rect = hueSlider.getBoundingClientRect();
+    applyHsvFromEvent(e, rect, "hue");
+    beginPointerDrag((ev) => applyHsvFromEvent(ev, rect, "hue"));
+  });
+
+  function applyRgbFromInputs() {
+    const r = clamp(0, 255, parseInt(popover.querySelector("#rgb-r").value, 10) || 0);
+    const g = clamp(0, 255, parseInt(popover.querySelector("#rgb-g").value, 10) || 0);
+    const b = clamp(0, 255, parseInt(popover.querySelector("#rgb-b").value, 10) || 0);
+    state.tagModalDraft[idx].color = rgbToHex(r, g, b);
+    state.colorPicker = { idx, ...rgbToHsv(r, g, b) };
+    patchColorPopover(overlay, idx);
+  }
+  popover.querySelector("#rgb-r").addEventListener("input", applyRgbFromInputs);
+  popover.querySelector("#rgb-g").addEventListener("input", applyRgbFromInputs);
+  popover.querySelector("#rgb-b").addEventListener("input", applyRgbFromInputs);
+  popover.querySelector("#color-picker-done").addEventListener("click", () => closeColorPicker());
+}
+
+// ---- About window ----
+function openAbout() {
+  if (state.tagModalOpen) closeTagManager(false);
+  state.aboutOpen = true;
+  render();
+}
+
+function closeAbout() {
+  state.aboutOpen = false;
+  render();
+}
+
+function renderAbout() {
+  const status = updateStatusLabel();
+  const overlay = el(`
+    <div class="bm-modal-overlay" id="about-overlay">
+      <div class="bm-about-modal">
+        <div class="bm-about-chrome">
+          <span class="bm-about-chrome-title">About BillManager</span>
+          <button class="bm-about-close" id="about-close-x">${ICONS.x}</button>
+        </div>
+        <div class="bm-about-band">
+          ${appMark(72, true)}
+          <div>
+            <div class="bm-about-title">BillManager</div>
+            <div class="bm-about-tagline">Anabaptist Brotherhood internal software</div>
+            <div class="bm-about-version">Version ${state.appVersion}${status ? ` · ${status}` : ""}</div>
+          </div>
+        </div>
+        <div class="bm-about-body">
+          <div class="bm-about-desc">BillManager keeps the Brotherhood's medical bills, receipts and member correspondence in one reviewed archive. It is used by office staff only and is not distributed to members.</div>
+          <div>
+            <div class="bm-about-credits-label">Credits</div>
+            <div class="bm-about-credits-grid">
+              <span class="bm-credit-name">Kevin Beachy</span><span class="bm-credit-role">Project lead</span>
+              <span class="bm-credit-name">Ethan Zook</span><span class="bm-credit-role">Debugging</span>
+              <span class="bm-credit-name">Dominic Yoder</span><span class="bm-credit-role">Debugging</span>
+              <span class="bm-credit-name">Claude Code</span><span class="bm-credit-role">Development assistance</span>
+              <span class="bm-credit-name">Claude Design</span><span class="bm-credit-role">UI/UX design</span>
+            </div>
+          </div>
+          <div class="bm-about-footer">
+            <a href="#" class="bm-about-repo-link" id="about-repo-link">github.com/AB-Kevin/BillManager</a>
+            <button class="bm-btn bm-btn-primary bm-btn-sm" id="about-close-btn">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  overlay.addEventListener("mousedown", (e) => {
+    if (e.target === overlay) closeAbout();
+  });
+  overlay.querySelector("#about-close-x").addEventListener("click", closeAbout);
+  overlay.querySelector("#about-close-btn").addEventListener("click", closeAbout);
+  overlay.querySelector("#about-repo-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.api.openRepo();
   });
 
   return overlay;
@@ -1349,6 +1812,12 @@ function renderTagManager() {
 (async function init() {
   state.appVersion = await window.api.getAppVersion();
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
+  checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
+  state.windowMaximized = await window.api.windowIsMaximized();
+  window.api.onWindowState((s) => {
+    state.windowMaximized = s.maximized;
+    render();
+  });
 
   const lastFolder = await window.api.getLastFolder();
   if (lastFolder) {
