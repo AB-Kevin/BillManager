@@ -422,13 +422,36 @@ ipcMain.handle("list-files", async (event, folder) => {
   );
 });
 
+// A metadata write (writeFileMeta below) ends with exiftool renaming a temp file
+// over the original, which fails with "Error renaming temporary file to <path>"
+// if something else — a preview pane, another app, or (most commonly) a cloud
+// sync client like OneDrive/SharePoint/Google Drive briefly checksumming/
+// uploading the file — has it locked at that exact instant. The lock is
+// transient, so a couple of automatic retries with a short delay clears most
+// occurrences before the user ever sees an error.
+const META_WRITE_RETRIES = 2;
+const META_WRITE_RETRY_DELAY_MS = 750;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 ipcMain.handle("update-file-meta", async (event, folder, relPath, patch) => {
   const full = path.join(folder, relPath);
   const ext = path.extname(relPath).toLowerCase();
   const current = await readFileMeta(full, ext);
   const merged = { ...current, ...patch };
-  await writeFileMeta(full, ext, merged.tags || [], merged.comments || []);
-  return merged;
+  let lastErr;
+  for (let attempt = 0; attempt <= META_WRITE_RETRIES; attempt++) {
+    try {
+      await writeFileMeta(full, ext, merged.tags || [], merged.comments || []);
+      return merged;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < META_WRITE_RETRIES) await delay(META_WRITE_RETRY_DELAY_MS);
+    }
+  }
+  throw lastErr;
 });
 
 // Rather than unlinking outright, moves the file into TRASH_DIR under a random

@@ -109,19 +109,36 @@ async function performUndo() {
 const pendingMetaWrites = new Set();
 
 function saveFileMeta(folder, path, patch) {
-  const promise = window.api.updateFileMeta(folder, path, patch).catch((e) => {
-    // A failed write used to fail silently: the optimistic in-memory edit stuck
-    // around until the next refresh quietly reverted it, with nothing to explain
-    // why. Surface it instead, same as the other file operations (move/delete/
-    // open) already do — most likely cause on a shared synced folder is another
-    // machine (or the sync client itself) holding the file locked.
-    alert(`Couldn't save changes to "${path.split("/").pop()}":\n${e.message || e}`);
-    throw e;
-  });
+  const promise = attemptSaveFileMeta(folder, path, patch);
   pendingMetaWrites.add(promise);
   const forget = () => pendingMetaWrites.delete(promise);
   promise.then(forget, forget);
   return promise;
+}
+
+// A failed write used to fail silently: the optimistic in-memory edit stuck
+// around until the next refresh quietly reverted it, with nothing to explain
+// why. Surface it instead, same as the other file operations (move/delete/
+// open) already do — most likely cause on a shared synced folder is another
+// machine (or the sync client itself) holding the file locked. The main
+// process already retries the write itself a couple of times before this
+// catch ever runs, so landing here means those automatic retries didn't clear
+// it — offer one manual retry, and if that fails too the lock is probably
+// going to outlast the user sitting here, so tell them to come back later
+// instead of prompting to retry again.
+async function attemptSaveFileMeta(folder, path, patch, isRetry = false) {
+  try {
+    await window.api.updateFileMeta(folder, path, patch);
+  } catch (e) {
+    const name = path.split("/").pop();
+    if (!isRetry && confirm(`Couldn't save changes to "${name}":\n${e.message || e}\n\nRetry?`)) {
+      return attemptSaveFileMeta(folder, path, patch, true);
+    }
+    if (isRetry) {
+      alert(`Still couldn't save changes to "${name}". Please try again in a few minutes.`);
+    }
+    throw e;
+  }
 }
 
 async function waitForPendingMetaWrites() {
