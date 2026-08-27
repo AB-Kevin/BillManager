@@ -56,6 +56,7 @@ const state = {
   colorPicker: null, // { idx, h, s, v } — the tag-row color picker popover, or null if closed
   aboutOpen: false,
   refreshing: false, // true while re-scanning the folder for changes made outside the app
+  loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
   windowMaximized: false,
@@ -524,6 +525,32 @@ async function moveFile(destDir) {
   }
 }
 
+// Renames the selected file in place to a yyyyMMdd_HHmmss timestamp,
+// preserving its extension — a one-click way to clear a "already exists in
+// that folder" collision at the move destination without leaving the app.
+async function autorenameFile() {
+  const file = getSelected();
+  if (!file || !state.folder) return;
+  const prevName = file.name;
+  try {
+    const result = await window.api.autorenameFile(state.folder, file.path);
+    if (result && result.error) {
+      alert(result.error);
+      return;
+    }
+    state.selectedPath = result.path;
+    const newPath = result.path;
+    pushUndo(`Autorename "${prevName}"`, async () => {
+      const r = await window.api.renameFile(state.folder, newPath, prevName);
+      if (r && r.error) throw new Error(r.error);
+    });
+  } catch (e) {
+    alert(`Couldn't rename "${prevName}": ${e.message || e}`);
+  } finally {
+    await refreshFiles();
+  }
+}
+
 // Moves every checked file to `destDir` in one action — e.g. filter the grid to
 // a tag, "Select all", then move the whole batch. Failures (a name collision at
 // the destination) don't block the rest of the batch; they're reported together
@@ -923,6 +950,17 @@ function el(html) {
 function render() {
   app.innerHTML = "";
   app.appendChild(renderTitlebar());
+  // While the startup last-folder lookup and its first file scan are in flight,
+  // show a single loading screen instead of the rail/main/preview. Rendering the
+  // rail mid-scan (folder set, but files/tags still empty) briefly shows "0
+  // folders"/"no tags", then a moment later the real ones — that content-height
+  // jump toggles the rail's vertical scrollbar on and off, which is what reads
+  // as a horizontal-scrollbar "blink" during startup. Skipping straight to the
+  // fully-loaded UI in one paint avoids that jump entirely.
+  if (state.loadingInitial) {
+    app.appendChild(renderLoadingScreen());
+    return;
+  }
   const body = el(`<div class="bm-body ${getSelected() ? "" : "bm-no-preview"}"></div>`);
   body.appendChild(renderRail());
   body.appendChild(renderMain());
@@ -937,6 +975,18 @@ function render() {
     if (state.colorPicker) positionColorPopover(overlay);
   }
   if (state.aboutOpen) app.appendChild(renderAbout());
+}
+
+// Full-window loading state shown only during the startup sequence in init()
+// (see the loadingInitial comment on render() above). Reuses the same spinning
+// arrows icon/animation as the rail's refresh button.
+function renderLoadingScreen() {
+  return el(`
+    <div class="bm-loading-screen">
+      <div class="bm-loading-spinner">${ICONS.refresh}</div>
+      <div class="bm-loading-text">Loading…</div>
+    </div>
+  `);
 }
 
 // ---- Title bar ----
@@ -1436,15 +1486,18 @@ function renderPreview(file) {
             ? `<div>
           <div class="bm-field">
             <label class="bm-field-label" for="move-select">Location</label>
-            <select class="bm-select" id="move-select" title="Move to a different subfolder">
-              <option value="" ${file.dir === "" ? "selected" : ""}>Root folder</option>
-              ${state.allFolders
-                .map(
-                  (f) =>
-                    `<option value="${f.replace(/"/g, "&quot;")}" ${file.dir === f ? "selected" : ""}>${f}</option>`
-                )
-                .join("")}
-            </select>
+            <div class="bm-field-row">
+              <select class="bm-select" id="move-select" title="Move to a different subfolder">
+                <option value="" ${file.dir === "" ? "selected" : ""}>Root folder</option>
+                ${state.allFolders
+                  .map(
+                    (f) =>
+                      `<option value="${f.replace(/"/g, "&quot;")}" ${file.dir === f ? "selected" : ""}>${f}</option>`
+                  )
+                  .join("")}
+              </select>
+              <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename this file to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
+            </div>
           </div>
         </div>`
             : ""
@@ -1508,6 +1561,8 @@ function renderPreview(file) {
   panel.querySelector("#preview-frame-wrap").addEventListener("dblclick", () => openFile(file.path));
   const moveSelect = panel.querySelector("#move-select");
   if (moveSelect) moveSelect.addEventListener("change", (e) => moveFile(e.target.value));
+  const autorenameBtn = panel.querySelector("#autorename-btn");
+  if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameFile);
   const tagSelect = panel.querySelector("#tag-select");
   if (tagSelect) {
     tagSelect.addEventListener("change", (e) => {
@@ -1827,6 +1882,7 @@ function renderAbout() {
 // back to the normal empty state if there's no remembered folder, or listing it
 // fails (e.g. it was deleted or a removable drive is unplugged).
 (async function init() {
+  render(); // paint the loading screen immediately, before any of the awaits below
   state.appVersion = await window.api.getAppVersion();
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
@@ -1840,10 +1896,10 @@ function renderAbout() {
   if (lastFolder) {
     try {
       await openFolder(lastFolder, true);
-      return;
     } catch {
       state.folder = null;
     }
   }
+  state.loadingInitial = false;
   render();
 })();

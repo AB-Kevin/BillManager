@@ -113,6 +113,17 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-body { flex: 1; display: grid; grid-template-columns: 268px 1fr 384px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
 .bm-body.bm-no-preview { grid-template-columns: 268px 1fr; }
 
+/* ---- Startup loading screen (see renderLoadingScreen in renderer.js) ---- */
+.bm-loading-screen {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-3); background: var(--surface-page);
+}
+.bm-loading-spinner svg { width: 28px; height: 28px; color: var(--green-500); animation: bm-spin 0.8s linear infinite; }
+.bm-loading-text {
+  font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
+  text-transform: uppercase; color: var(--text-caption);
+}
+
 /* ---- Rail ---- */
 .bm-rail {
   background: var(--surface-rail);
@@ -133,7 +144,10 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
   text-transform: uppercase; color: rgba(255, 255, 255, 0.8);
 }
-.bm-rail-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.bm-rail-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
+  display: flex; flex-direction: column;
+}
 
 .bm-choose-folder-wrap { padding: var(--space-5) 0 0; flex-shrink: 0; }
 .bm-rail-path-row { margin-top: var(--space-3); display: flex; gap: var(--space-2); align-items: flex-start; }
@@ -177,7 +191,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-nav-item.active { background: var(--white); color: var(--green-500); font-weight: 500; }
 .bm-nav-name { display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-nav-count { font-size: 12px; flex-shrink: 0; }
-.bm-folder-nav-list { max-height: 190px; overflow-y: auto; margin-bottom: var(--space-2); }
+.bm-folder-nav-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-bottom: var(--space-2); }
 
 .bm-tag-nav-list { display: flex; flex-direction: column; }
 .bm-tag-nav {
@@ -235,6 +249,9 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 
 /* ---- Form fields ---- */
 .bm-field { display: flex; flex-direction: column; gap: 6px; }
+.bm-field-row { display: flex; align-items: center; gap: var(--space-2); }
+.bm-field-row .bm-select { flex: 1; min-width: 0; }
+.bm-field-row .bm-btn { flex-shrink: 0; }
 .bm-field-label {
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
   text-transform: uppercase; color: var(--text-caption);

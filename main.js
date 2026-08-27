@@ -382,6 +382,60 @@ ipcMain.handle("move-files-batch", async (event, folder, relPaths, destDir) => {
   return { moved, errors };
 });
 
+// Renames a file within its current folder to `newName`. Used both directly
+// (autorename) and to undo an autorename (renaming back to the original name).
+// Refuses to clobber an existing file at that name, same as moveOneFile.
+function renameOneFile(folder, relPath, newName) {
+  const dir = path.dirname(relPath);
+  const destDirRel = dir === "." ? "" : dir;
+  const newRelPath = destDirRel ? `${destDirRel}/${newName}` : newName;
+  const srcFull = path.join(folder, relPath);
+  const destFull = path.join(folder, newRelPath);
+  if (srcFull === destFull) return { path: relPath };
+  if (fs.existsSync(destFull)) {
+    return { error: `"${newName}" already exists in that folder.` };
+  }
+  try {
+    fs.renameSync(srcFull, destFull);
+  } catch (e) {
+    return { error: `Couldn't rename "${path.basename(relPath)}": ${e.message}` };
+  }
+  return { path: newRelPath };
+}
+
+ipcMain.handle("rename-file", async (event, folder, relPath, newName) => {
+  return renameOneFile(folder, relPath, newName);
+});
+
+// Renames a file in place to a yyyyMMdd_HHmmss timestamp (preserving its
+// extension) — lets a name collision at a move destination be resolved
+// in-app instead of requiring a trip to file explorer to rename it by hand.
+// Falls back to a numeric suffix in the unlikely case two files land on the
+// same second.
+function autorenameOneFile(folder, relPath) {
+  const ext = path.extname(relPath);
+  const dir = path.dirname(relPath);
+  const destDirRel = dir === "." ? "" : dir;
+  const destDirFull = path.join(folder, destDirRel);
+
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  let name = `${stamp}${ext}`;
+  let n = 1;
+  while (fs.existsSync(path.join(destDirFull, name))) {
+    name = `${stamp}_${n}${ext}`;
+    n++;
+  }
+
+  return renameOneFile(folder, relPath, name);
+}
+
+ipcMain.handle("autorename-file", async (event, folder, relPath) => {
+  return autorenameOneFile(folder, relPath);
+});
+
 // Windows/Chromium quirk: after the DOM subtree holding a native <select> is torn
 // down and rebuilt (as happens on every full re-render following a file move),
 // Chromium can leave that select's popup-menu tracking orphaned, and clicking any
