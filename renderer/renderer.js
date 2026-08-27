@@ -43,6 +43,7 @@ const state = {
   files: [],
   selected: new Set(), // relative paths of every selected file — drives both the grid's green-box highlight and the preview pane
   selectAnchor: null, // relative path of the last plain/ctrl-clicked file — the fixed end of a shift-click range
+  navCursor: null, // relative path of the last arrow-key-navigated-to file — the moving end for keyboard nav/shift-range
   search: "",
   activeTags: new Set(), // tag names currently filtering the grid (AND — a file matches only if it has all of them)
   activeFolder: null, // relative path of the subfolder filter, or null for "All files" (recursive)
@@ -998,6 +999,84 @@ document.addEventListener("keydown", (e) => {
   else addTag(match.name);
 });
 
+// Groups the on-screen cards into visual rows by comparing offsetTop, since the
+// grid's column count is responsive (CSS auto-fill) and isn't known in JS. Bails
+// out (returns the same index unmoved) if the live DOM doesn't match `filtered`
+// one-for-one, which can only happen mid-render.
+function moveGridRow(filtered, idx, dir) {
+  const cards = document.querySelectorAll("#grid-wrap .bm-grid .bm-card");
+  if (cards.length !== filtered.length) return idx;
+  const rows = [];
+  let lastTop = null;
+  cards.forEach((card, i) => {
+    const top = card.offsetTop;
+    if (lastTop === null || Math.abs(top - lastTop) > 1) {
+      rows.push([]);
+      lastTop = top;
+    }
+    rows[rows.length - 1].push(i);
+  });
+  const rowIdx = rows.findIndex((r) => r.includes(idx));
+  if (rowIdx === -1) return idx;
+  const col = rows[rowIdx].indexOf(idx);
+  const targetRow = rows[rowIdx + dir];
+  if (!targetRow) return idx;
+  return targetRow[Math.min(col, targetRow.length - 1)];
+}
+
+function scrollCardIntoView(path) {
+  const card = document.querySelector(`#grid-wrap .bm-grid .bm-card[data-path="${CSS.escape(path)}"]`);
+  if (card) card.scrollIntoView({ block: "nearest" });
+}
+
+// Arrow-key grid navigation. Left/Right step to the previous/next file in the
+// current sort order; Up/Down step to the same column in the previous/next row
+// (see moveGridRow). A plain arrow press collapses to a single selection and
+// resets the anchor, mirroring a plain click; Shift+arrow instead extends the
+// selection from the fixed anchor while the cursor keeps moving, mirroring
+// shift-click. With nothing selected, any arrow key selects the first file.
+document.addEventListener("keydown", (e) => {
+  if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  if (isEditableTarget(document.activeElement)) return;
+  if (state.tagModalOpen || state.aboutOpen || state.colorPicker || state.recordingShortcutIdx !== null) return;
+  const filtered = getFiltered();
+  if (filtered.length === 0) return;
+
+  const cursorPath = state.navCursor || state.selectAnchor;
+  const idx = cursorPath ? filtered.findIndex((f) => f.path === cursorPath) : -1;
+  if (idx === -1) {
+    e.preventDefault();
+    const target = filtered[0];
+    state.selected = new Set([target.path]);
+    state.selectAnchor = target.path;
+    state.navCursor = target.path;
+    render();
+    scrollCardIntoView(target.path);
+    return;
+  }
+
+  let newIdx = idx;
+  if (e.key === "ArrowLeft") newIdx = Math.max(0, idx - 1);
+  else if (e.key === "ArrowRight") newIdx = Math.min(filtered.length - 1, idx + 1);
+  else newIdx = moveGridRow(filtered, idx, e.key === "ArrowUp" ? -1 : 1);
+  if (newIdx === idx) return; // already at an edge — let the key event through
+
+  e.preventDefault();
+  const target = filtered[newIdx];
+  if (e.shiftKey) {
+    if (!state.selectAnchor) state.selectAnchor = cursorPath;
+    const anchorIdx = filtered.findIndex((f) => f.path === state.selectAnchor);
+    const [from, to] = anchorIdx < newIdx ? [anchorIdx, newIdx] : [newIdx, anchorIdx];
+    state.selected = new Set(filtered.slice(from, to + 1).map((f) => f.path));
+  } else {
+    state.selected = new Set([target.path]);
+    state.selectAnchor = target.path;
+  }
+  state.navCursor = target.path;
+  render();
+  scrollCardIntoView(target.path);
+});
+
 function el(html) {
   const t = document.createElement("template");
   t.innerHTML = html.trim();
@@ -1397,6 +1476,7 @@ function renderRuleRowInto(main, filtered) {
     } else {
       filtered.forEach((f) => state.selected.delete(f.path));
     }
+    state.navCursor = state.selectAnchor;
     render();
   };
   const folderCount = new Set(filtered.map((f) => f.dir).filter(Boolean)).size;
@@ -1487,6 +1567,9 @@ function renderGridInto(container, filtered) {
         state.selected = new Set([f.path]);
         state.selectAnchor = f.path;
       }
+      // Whatever the click did to the selection, the clicked card becomes the
+      // keyboard nav cursor so a following arrow key continues from here.
+      state.navCursor = f.path;
       render();
     });
     card.addEventListener("dblclick", () => openFile(f.path));
@@ -1504,6 +1587,8 @@ function renderGridInto(container, filtered) {
   container.onclick = (e) => {
     if (e.target === container || e.target === grid) {
       state.selected = new Set();
+      state.selectAnchor = null;
+      state.navCursor = null;
       render();
     }
   };
