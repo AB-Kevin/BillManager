@@ -41,8 +41,8 @@ function appMark(size, reversed) {
 const state = {
   folder: null,
   files: [],
-  selectedPath: null, // relative path (with "/" separators) of the selected file — unique across subfolders
-  checked: new Set(), // relative paths checkbox-selected for a bulk action (independent of selectedPath)
+  selected: new Set(), // relative paths of every selected file — drives both the grid's green-box highlight and the preview pane
+  selectAnchor: null, // relative path of the last plain/ctrl-clicked file — the fixed end of a shift-click range
   search: "",
   activeTags: new Set(), // tag names currently filtering the grid (AND — a file matches only if it has all of them)
   activeFolder: null, // relative path of the subfolder filter, or null for "All files" (recursive)
@@ -170,8 +170,11 @@ function extLabel(ext) {
   return "JPG";
 }
 
-function getSelected() {
-  return state.files.find((f) => f.path === state.selectedPath) || null;
+// Returns every selected file, in `state.files` order (rather than Set
+// iteration order) so the grid, mini-preview grid, and batch operations all
+// see selected files in a stable, predictable order.
+function getSelectedFiles() {
+  return state.files.filter((f) => state.selected.has(f.path));
 }
 
 function getAllTags() {
@@ -351,12 +354,12 @@ async function refreshFiles(skipFocusNudge = false) {
       window.api.listFiles(state.folder),
       window.api.listFolders(state.folder),
     ]);
-    // Drop any checked paths that no longer exist under this name (moved elsewhere
+    // Drop any selected paths that no longer exist under this name (moved elsewhere
     // by this same action, deleted, or changed outside the app) rather than leaving
-    // a stale bulk-selection the user can't see.
+    // a stale selection the user can't see.
     const validPaths = new Set(state.files.map((f) => f.path));
-    state.checked.forEach((p) => {
-      if (!validPaths.has(p)) state.checked.delete(p);
+    state.selected.forEach((p) => {
+      if (!validPaths.has(p)) state.selected.delete(p);
     });
   } finally {
     state.refreshing = false;
@@ -397,8 +400,8 @@ async function chooseFolder() {
 // by hand mid-session.
 async function openFolder(folder, isStartup = false) {
   state.folder = folder;
-  state.selectedPath = null;
-  state.checked = new Set();
+  state.selected = new Set();
+  state.selectAnchor = null;
   state.activeTags = new Set();
   state.activeFolder = null;
   state.untaggedOnly = false;
@@ -409,34 +412,43 @@ async function openFolder(folder, isStartup = false) {
   await refreshFiles(isStartup);
 }
 
+// Adds `tag` to every selected file that doesn't already have it. With a
+// single file selected this is just that file; with many, it applies to the
+// whole batch in one undo step.
 async function addTag(raw) {
   const tag = (raw || "").trim();
   if (!tag) return;
-  const file = getSelected();
-  if (!file || file.tags.includes(tag)) return;
-  const prevTags = [...file.tags];
-  const path = file.path;
-  const newTags = [...file.tags, tag];
-  file.tags = newTags;
+  const files = getSelectedFiles().filter((f) => !f.tags.includes(tag));
+  if (files.length === 0) return;
+  const prev = files.map((f) => ({ path: f.path, tags: [...f.tags] }));
+  files.forEach((f) => {
+    f.tags = [...f.tags, tag];
+  });
   render();
-  await saveFileMeta(state.folder, path, { tags: newTags });
-  pushUndo(`Add tag "${tag}"`, () => saveFileMeta(state.folder, path, { tags: prevTags }));
+  await Promise.all(files.map((f) => saveFileMeta(state.folder, f.path, { tags: f.tags })));
+  pushUndo(`Add tag "${tag}"`, () =>
+    Promise.all(prev.map((p) => saveFileMeta(state.folder, p.path, { tags: p.tags })))
+  );
 }
 
+// Removes `tag` from every selected file that currently has it.
 async function removeTag(tag) {
-  const file = getSelected();
-  if (!file) return;
-  const prevTags = [...file.tags];
-  const path = file.path;
-  file.tags = file.tags.filter((t) => t !== tag);
+  const files = getSelectedFiles().filter((f) => f.tags.includes(tag));
+  if (files.length === 0) return;
+  const prev = files.map((f) => ({ path: f.path, tags: [...f.tags] }));
+  files.forEach((f) => {
+    f.tags = f.tags.filter((t) => t !== tag);
+  });
   render();
-  await saveFileMeta(state.folder, path, { tags: file.tags });
-  pushUndo(`Remove tag "${tag}"`, () => saveFileMeta(state.folder, path, { tags: prevTags }));
+  await Promise.all(files.map((f) => saveFileMeta(state.folder, f.path, { tags: f.tags })));
+  pushUndo(`Remove tag "${tag}"`, () =>
+    Promise.all(prev.map((p) => saveFileMeta(state.folder, p.path, { tags: p.tags })))
+  );
 }
 
 const commentDebounce = {}; // per-index timer while a comment's textarea is being typed in
 function updateComment(idx, value) {
-  const file = getSelected();
+  const file = getSelectedFiles()[0];
   if (!file) return;
   file.comments[idx] = value;
   if (commentDebounce[idx]) clearTimeout(commentDebounce[idx].timer);
@@ -468,7 +480,7 @@ function flushPendingComments() {
 const commentEditSnapshot = {};
 
 function addComment() {
-  const file = getSelected();
+  const file = getSelectedFiles()[0];
   if (!file) return;
   const prevComments = [...file.comments];
   const path = file.path;
@@ -481,7 +493,7 @@ function addComment() {
 }
 
 function removeComment(idx) {
-  const file = getSelected();
+  const file = getSelectedFiles()[0];
   if (!file) return;
   const prevComments = [...file.comments];
   const path = file.path;
@@ -493,73 +505,73 @@ function removeComment(idx) {
   pushUndo("Remove comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
 }
 
+// Appends `text` as a new comment on every selected file at once — the
+// multi-select preview's equivalent of "Add comment", since editing each
+// file's own comment list individually isn't practical once more than one
+// file is selected.
+async function addCommentToSelected(text) {
+  const comment = (text || "").trim();
+  if (!comment) return;
+  const files = getSelectedFiles();
+  if (files.length === 0) return;
+  const prev = files.map((f) => ({ path: f.path, comments: [...f.comments] }));
+  files.forEach((f) => {
+    f.comments = [...f.comments, comment];
+  });
+  render();
+  await Promise.all(files.map((f) => saveFileMeta(state.folder, f.path, { comments: f.comments })));
+  pushUndo(`Add comment to ${files.length} files`, () =>
+    Promise.all(prev.map((p) => saveFileMeta(state.folder, p.path, { comments: p.comments })))
+  );
+}
+
 async function openFile(relPath) {
   if (!state.folder) return;
   const error = await window.api.openFile(state.folder, relPath);
   if (error) alert(`Couldn't open "${relPath}":\n${error}`);
 }
 
-async function moveFile(destDir) {
-  const file = getSelected();
-  if (!file || destDir === file.dir) return;
-  const prevDir = file.dir;
-  const name = file.name;
-  try {
-    const result = await window.api.moveFile(state.folder, file.path, destDir);
-    if (result && result.error) {
-      alert(result.error);
-      return;
-    }
-    state.selectedPath = result.path;
-    const movedTo = result.path;
-    pushUndo(`Move "${name}"`, async () => {
-      const r = await window.api.moveFile(state.folder, movedTo, prevDir);
-      if (r && r.error) throw new Error(r.error);
-    });
-  } catch (e) {
-    // Shouldn't happen — the main-process move no longer throws — but resync
-    // with disk regardless rather than leaving stale state on an unexpected failure.
-    alert(`Couldn't move "${file.name}": ${e.message || e}`);
-  } finally {
-    await refreshFiles();
-  }
-}
+// Moves every selected file to `destDir`. A single file moves immediately, no
+// confirmation, same as always. More than one asks for confirmation first
+// (a batch move is harder to eyeball before it happens) and, since the
+// preview pane is now a persistent surface rather than a transient action
+// bar, keeps the moved files selected afterward at their new paths instead of
+// clearing the selection.
+async function moveSelected(destDir) {
+  const files = getSelectedFiles();
+  if (files.length === 0) return;
 
-// Renames the selected file in place to a yyyyMMdd_HHmmss timestamp,
-// preserving its extension — a one-click way to clear a "already exists in
-// that folder" collision at the move destination without leaving the app.
-async function autorenameFile() {
-  const file = getSelected();
-  if (!file || !state.folder) return;
-  const prevName = file.name;
-  try {
-    const result = await window.api.autorenameFile(state.folder, file.path);
-    if (result && result.error) {
-      alert(result.error);
-      return;
+  if (files.length === 1) {
+    const file = files[0];
+    if (destDir === file.dir) return;
+    const prevDir = file.dir;
+    const name = file.name;
+    try {
+      const result = await window.api.moveFile(state.folder, file.path, destDir);
+      if (result && result.error) {
+        alert(result.error);
+        return;
+      }
+      state.selected = new Set([result.path]);
+      state.selectAnchor = result.path;
+      const movedTo = result.path;
+      pushUndo(`Move "${name}"`, async () => {
+        const r = await window.api.moveFile(state.folder, movedTo, prevDir);
+        if (r && r.error) throw new Error(r.error);
+      });
+    } catch (e) {
+      // Shouldn't happen — the main-process move no longer throws — but resync
+      // with disk regardless rather than leaving stale state on an unexpected failure.
+      alert(`Couldn't move "${file.name}": ${e.message || e}`);
+    } finally {
+      await refreshFiles();
     }
-    state.selectedPath = result.path;
-    const newPath = result.path;
-    pushUndo(`Autorename "${prevName}"`, async () => {
-      const r = await window.api.renameFile(state.folder, newPath, prevName);
-      if (r && r.error) throw new Error(r.error);
-    });
-  } catch (e) {
-    alert(`Couldn't rename "${prevName}": ${e.message || e}`);
-  } finally {
-    await refreshFiles();
+    return;
   }
-}
 
-// Moves every checked file to `destDir` in one action — e.g. filter the grid to
-// a tag, "Select all", then move the whole batch. Failures (a name collision at
-// the destination) don't block the rest of the batch; they're reported together
-// once the attempt finishes.
-async function bulkMoveChecked(destDir) {
-  const paths = [...state.checked];
-  if (paths.length === 0 || !state.folder) return;
+  const paths = files.map((f) => f.path);
   const destLabel = destDir || "Root folder";
-  if (!confirm(`Move ${paths.length} file${paths.length === 1 ? "" : "s"} to "${destLabel}"?`)) return;
+  if (!confirm(`Move ${paths.length} files to "${destLabel}"?`)) return;
   let errors = [];
   let moved = [];
   try {
@@ -568,15 +580,15 @@ async function bulkMoveChecked(destDir) {
     errors = (result && result.errors) || [];
   } catch (e) {
     // Shouldn't happen — moveOneFile no longer throws — but if the IPC call
-    // itself fails outright, still fall through to clear the selection and
-    // resync below rather than leaving the UI stuck showing stale state.
+    // itself fails outright, still fall through to resync below rather than
+    // leaving the UI stuck showing stale state.
     errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
   } finally {
-    state.checked = new Set();
+    state.selected = new Set([...moved.map((m) => m.to), ...errors.map((e) => e.path)]);
     await refreshFiles();
   }
   if (moved.length > 0) {
-    pushUndo(`Move ${moved.length} file${moved.length === 1 ? "" : "s"}`, () => undoBulkMove(moved));
+    pushUndo(`Move ${moved.length} files`, () => undoBulkMove(moved));
   }
   if (errors.length > 0) {
     alert(
@@ -586,10 +598,75 @@ async function bulkMoveChecked(destDir) {
   }
 }
 
+// Renames every selected file in place to a yyyyMMdd_HHmmss timestamp,
+// preserving each one's extension — a one-click way to clear an "already
+// exists in that folder" collision at the move destination without a trip to
+// file explorer. With more than one file selected, every name gets a " (n)"
+// suffix (1-indexed) so the batch doesn't collide with itself.
+async function autorenameSelected() {
+  const files = getSelectedFiles();
+  if (files.length === 0 || !state.folder) return;
+
+  if (files.length === 1) {
+    const file = files[0];
+    const prevName = file.name;
+    try {
+      const result = await window.api.autorenameFile(state.folder, file.path);
+      if (result && result.error) {
+        alert(result.error);
+        return;
+      }
+      state.selected = new Set([result.path]);
+      state.selectAnchor = result.path;
+      const newPath = result.path;
+      pushUndo(`Autorename "${prevName}"`, async () => {
+        const r = await window.api.renameFile(state.folder, newPath, prevName);
+        if (r && r.error) throw new Error(r.error);
+      });
+    } catch (e) {
+      alert(`Couldn't rename "${prevName}": ${e.message || e}`);
+    } finally {
+      await refreshFiles();
+    }
+    return;
+  }
+
+  const paths = files.map((f) => f.path);
+  const prevNames = new Map(files.map((f) => [f.path, f.name]));
+  let moved = [];
+  let errors = [];
+  try {
+    const result = await window.api.autorenameFiles(state.folder, paths);
+    moved = (result && result.moved) || [];
+    errors = (result && result.errors) || [];
+  } catch (e) {
+    errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
+  } finally {
+    state.selected = new Set([...moved.map((m) => m.to), ...errors.map((e) => e.path)]);
+    await refreshFiles();
+  }
+  if (moved.length > 0) {
+    pushUndo(`Autorename ${moved.length} files`, async () => {
+      const errs = [];
+      for (const { from, to } of moved) {
+        const r = await window.api.renameFile(state.folder, to, prevNames.get(from));
+        if (r && r.error) errs.push(`${to}: ${r.error}`);
+      }
+      if (errs.length > 0) throw new Error(`Some files couldn't be renamed back:\n${errs.join("\n")}`);
+    });
+  }
+  if (errors.length > 0) {
+    alert(
+      `Renamed ${moved.length} of ${paths.length} file(s). ${errors.length} failed:\n\n` +
+        errors.map((e) => `• ${e.path}: ${e.error}`).join("\n")
+    );
+  }
+}
+
 // Moves every file in `moved` (each an { from, to } pair from move-files-batch)
 // back to the subfolder its `from` path lived in. Collisions since the original
 // move (a same-named file reappearing at the old spot) are reported together
-// rather than aborting the rest of the batch, mirroring bulkMoveChecked itself.
+// rather than aborting the rest of the batch, mirroring moveSelected itself.
 async function undoBulkMove(moved) {
   const errors = [];
   for (const { from, to } of moved) {
@@ -602,37 +679,15 @@ async function undoBulkMove(moved) {
   }
 }
 
-async function deleteFile() {
-  const file = getSelected();
-  if (!file) return;
-  if (!confirm(`Delete "${file.name}" from disk? You can undo this with Ctrl+Z until you close the app.`)) return;
-  const path = file.path;
-  const name = file.name;
-  const result = await window.api.deleteFile(state.folder, path);
-  if (result && result.error) {
-    alert(result.error);
-    return;
-  }
-  state.selectedPath = null;
-  pushUndo(`Delete "${name}"`, async () => {
-    const r = await window.api.restoreFile(result.trashPath, state.folder, path);
-    if (r && r.error) throw new Error(r.error);
-  });
-  await refreshFiles();
-}
-
-// Deletes every checked file in one action — mirrors bulkMoveChecked. Each file
-// is trashed independently (same mechanism as a single delete), so Undo can
-// bring the whole batch back as one step.
-async function bulkDeleteChecked() {
-  const paths = [...state.checked];
-  if (paths.length === 0 || !state.folder) return;
-  if (
-    !confirm(
-      `Delete ${paths.length} file${paths.length === 1 ? "" : "s"} from disk? You can undo this with Ctrl+Z until you close the app.`
-    )
-  )
-    return;
+// Deletes every selected file in one action. Each file is trashed
+// independently, so one locked/in-use file doesn't block the rest, and Undo
+// brings the whole batch back as one step.
+async function deleteSelected() {
+  const files = getSelectedFiles();
+  if (files.length === 0 || !state.folder) return;
+  const paths = files.map((f) => f.path);
+  const label = files.length === 1 ? `"${files[0].name}"` : `${files.length} files`;
+  if (!confirm(`Delete ${label} from disk? You can undo this with Ctrl+Z until you close the app.`)) return;
   let deleted = [];
   let errors = [];
   try {
@@ -642,7 +697,7 @@ async function bulkDeleteChecked() {
   } catch (e) {
     errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
   } finally {
-    state.checked = new Set();
+    state.selected = new Set();
     await refreshFiles();
   }
   if (deleted.length > 0) {
@@ -927,17 +982,19 @@ document.addEventListener("keydown", (e) => {
   else if (state.aboutOpen) closeAbout();
 });
 
-// Global shortcut dispatch: toggles the matching predefined tag on the selected file.
+// Global shortcut dispatch: toggles the matching predefined tag on every
+// selected file. If every selected file already has it, the shortcut removes
+// it from all of them; otherwise it adds it to whichever ones are missing it.
 document.addEventListener("keydown", (e) => {
   if (state.tagModalOpen || isEditableTarget(document.activeElement)) return;
-  const file = getSelected();
-  if (!file || state.predefinedTags.length === 0) return;
+  const files = getSelectedFiles();
+  if (files.length === 0 || state.predefinedTags.length === 0) return;
   const combo = comboFromEvent(e);
   if (!combo) return;
   const match = state.predefinedTags.find((t) => t.shortcut && t.shortcut === combo);
   if (!match) return;
   e.preventDefault();
-  if (file.tags.includes(match.name)) removeTag(match.name);
+  if (files.every((f) => f.tags.includes(match.name))) removeTag(match.name);
   else addTag(match.name);
 });
 
@@ -948,6 +1005,19 @@ function el(html) {
 }
 
 function render() {
+  // render() tears down and rebuilds the entire #app subtree on every call —
+  // including the file grid and the rail's nav list — so their scroll
+  // containers would otherwise snap back to the top on every single
+  // selection, tag toggle, move, etc. Carry each one's scroll position over
+  // to its freshly-rebuilt replacement. (Safe across a folder switch too:
+  // refreshFiles() always renders once while the new folder's file list is
+  // still empty, which clamps scrollTop back near 0 before the real content
+  // — and its own render() — lands.)
+  const prevGridWrap = document.getElementById("grid-wrap");
+  const gridScrollTop = prevGridWrap ? prevGridWrap.scrollTop : 0;
+  const prevRailScroll = document.querySelector(".bm-rail-scroll");
+  const railScrollTop = prevRailScroll ? prevRailScroll.scrollTop : 0;
+
   app.innerHTML = "";
   app.appendChild(renderTitlebar());
   // While the startup last-folder lookup and its first file scan are in flight,
@@ -961,12 +1031,15 @@ function render() {
     app.appendChild(renderLoadingScreen());
     return;
   }
-  const body = el(`<div class="bm-body ${getSelected() ? "" : "bm-no-preview"}"></div>`);
+  const body = el(`<div class="bm-body"></div>`);
   body.appendChild(renderRail());
   body.appendChild(renderMain());
-  const selected = getSelected();
-  if (selected) body.appendChild(renderPreview(selected));
+  body.appendChild(renderPreview());
   app.appendChild(body);
+  const newGridWrap = document.getElementById("grid-wrap");
+  if (newGridWrap) newGridWrap.scrollTop = gridScrollTop;
+  const newRailScroll = document.querySelector(".bm-rail-scroll");
+  if (newRailScroll) newRailScroll.scrollTop = railScrollTop;
   if (state.tagModalOpen) {
     const overlay = renderTagManager();
     app.appendChild(overlay);
@@ -1268,7 +1341,6 @@ function renderMain() {
         <label class="bm-checkbox-label"><input type="checkbox" id="select-all-checkbox" disabled /> Select all ${filtered.length}</label>
         <div class="bm-rule-row-meta" id="rule-row-meta"></div>
       </div>
-      <div class="bm-bulkbar-wrap" id="bulkbar-wrap"></div>
       <div class="bm-grid-wrap" id="grid-wrap"></div>
     </main>
   `);
@@ -1278,14 +1350,12 @@ function renderMain() {
     state.search = e.target.value;
     const nowFiltered = getFiltered();
     renderRuleRowInto(main, nowFiltered);
-    renderBulkBarInto(main.querySelector("#bulkbar-wrap"), nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
   main.querySelector("#sort-select").addEventListener("change", (e) => {
     state.sortBy = e.target.value;
     const nowFiltered = getFiltered();
     renderRuleRowInto(main, nowFiltered);
-    renderBulkBarInto(main.querySelector("#bulkbar-wrap"), nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
   main.querySelector("#undo-btn").addEventListener("click", performUndo);
@@ -1298,7 +1368,6 @@ function renderMain() {
   });
 
   renderRuleRowInto(main, filtered);
-  renderBulkBarInto(main.querySelector("#bulkbar-wrap"), filtered);
   renderGridInto(main.querySelector("#grid-wrap"), filtered);
   return main;
 }
@@ -1313,64 +1382,25 @@ function renderRuleRowInto(main, filtered) {
     main.querySelector("#rule-row-meta").textContent = "";
     return;
   }
-  const checkedInFiltered = filtered.filter((f) => state.checked.has(f.path)).length;
-  const allFilteredChecked = filtered.length > 0 && checkedInFiltered === filtered.length;
+  const selectedInFiltered = filtered.filter((f) => state.selected.has(f.path)).length;
+  const allFilteredSelected = filtered.length > 0 && selectedInFiltered === filtered.length;
   const label = main.querySelector(".bm-checkbox-label");
   label.lastChild.textContent = ` Select all ${filtered.length}`;
   const cb = main.querySelector("#select-all-checkbox");
   cb.disabled = filtered.length === 0;
-  cb.checked = allFilteredChecked;
-  cb.indeterminate = checkedInFiltered > 0 && !allFilteredChecked;
+  cb.checked = allFilteredSelected;
+  cb.indeterminate = selectedInFiltered > 0 && !allFilteredSelected;
   cb.onchange = () => {
-    if (cb.checked) filtered.forEach((f) => state.checked.add(f.path));
-    else filtered.forEach((f) => state.checked.delete(f.path));
+    if (cb.checked) {
+      filtered.forEach((f) => state.selected.add(f.path));
+      state.selectAnchor = filtered.length > 0 ? filtered[filtered.length - 1].path : null;
+    } else {
+      filtered.forEach((f) => state.selected.delete(f.path));
+    }
     render();
   };
   const folderCount = new Set(filtered.map((f) => f.dir).filter(Boolean)).size;
   main.querySelector("#rule-row-meta").textContent = `${filtered.length} FILES · ${folderCount} FOLDERS`;
-}
-
-// Bulk-selection actions bar above the grid — only shown once something is
-// checked. Rendered into its own container (like renderGridInto) so search/sort
-// updates can refresh it without a full app re-render.
-function renderBulkBarInto(container, filtered) {
-  container.innerHTML = "";
-  if (!state.folder || state.checked.size === 0) return;
-
-  const bar = el(`
-    <div class="bm-bulkbar">
-      <span class="bm-bulk-hint">${state.checked.size} selected</span>
-      <div class="bm-bulk-actions">
-        ${
-          state.allFolders.length > 0
-            ? `<select class="bm-select" id="bulk-move-select" title="Move ${state.checked.size} selected file${state.checked.size === 1 ? "" : "s"} to…">
-                <option value="">Root folder</option>
-                ${state.allFolders
-                  .map((f) => `<option value="${f.replace(/"/g, "&quot;")}">${f}</option>`)
-                  .join("")}
-              </select>
-              <button class="bm-btn bm-btn-secondary bm-btn-sm" id="bulk-move-btn">${ICONS.folder} Move</button>`
-            : `<span class="bm-bulk-hint">No other subfolders to move into yet.</span>`
-        }
-        <button class="bm-btn bm-btn-danger bm-btn-sm" id="bulk-delete-btn">${ICONS.trash} Delete</button>
-        <button class="bm-btn bm-btn-ghost bm-btn-sm" id="bulk-clear-btn">Clear</button>
-      </div>
-    </div>
-  `);
-
-  const moveBtn = bar.querySelector("#bulk-move-btn");
-  if (moveBtn) {
-    moveBtn.addEventListener("click", () => {
-      bulkMoveChecked(bar.querySelector("#bulk-move-select").value);
-    });
-  }
-  bar.querySelector("#bulk-delete-btn").addEventListener("click", bulkDeleteChecked);
-  bar.querySelector("#bulk-clear-btn").addEventListener("click", () => {
-    state.checked = new Set();
-    render();
-  });
-
-  container.appendChild(bar);
 }
 
 function renderGridInto(container, filtered) {
@@ -1407,12 +1437,11 @@ function renderGridInto(container, filtered) {
 
   const grid = el(`<div class="bm-grid"></div>`);
   filtered.forEach((f) => {
-    const isSelected = state.selectedPath === f.path;
+    const isSelected = state.selected.has(f.path);
     const card = el(`
       <div class="bm-card ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
         <div class="bm-card-thumb">
           <div class="bm-card-kind">${extLabel(f.ext)}</div>
-          <input type="checkbox" class="bm-card-check" title="Select for bulk action" />
           ${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}
           <button class="bm-card-open" data-open title="Open file">${ICONS.open}</button>
         </div>
@@ -1434,10 +1463,30 @@ function renderGridInto(container, filtered) {
         </div>
       </div>
     `);
-    card.addEventListener("click", () => {
-      // Clicking the already-selected file again closes the preview instead of
-      // just re-selecting it, so there's a one-click way to get the wider grid back.
-      state.selectedPath = state.selectedPath === f.path ? null : f.path;
+    // File-explorer-style click selection: a plain click selects just this
+    // file; Ctrl/Cmd-click toggles it into/out of the selection without
+    // touching the rest; Shift-click selects the contiguous range between the
+    // last plain/ctrl-clicked file (the anchor) and this one, in the grid's
+    // current sort order.
+    card.addEventListener("click", (e) => {
+      if (e.shiftKey && state.selectAnchor) {
+        const anchorIdx = filtered.findIndex((x) => x.path === state.selectAnchor);
+        const clickIdx = filtered.findIndex((x) => x.path === f.path);
+        if (anchorIdx === -1 || clickIdx === -1) {
+          state.selected = new Set([f.path]);
+          state.selectAnchor = f.path;
+        } else {
+          const [from, to] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
+          state.selected = new Set(filtered.slice(from, to + 1).map((x) => x.path));
+        }
+      } else if (e.ctrlKey || e.metaKey) {
+        if (state.selected.has(f.path)) state.selected.delete(f.path);
+        else state.selected.add(f.path);
+        state.selectAnchor = f.path;
+      } else {
+        state.selected = new Set([f.path]);
+        state.selectAnchor = f.path;
+      }
       render();
     });
     card.addEventListener("dblclick", () => openFile(f.path));
@@ -1445,20 +1494,85 @@ function renderGridInto(container, filtered) {
       e.stopPropagation();
       openFile(f.path);
     });
-    const checkbox = card.querySelector(".bm-card-check");
-    checkbox.checked = state.checked.has(f.path);
-    checkbox.addEventListener("click", (e) => {
-      e.stopPropagation(); // don't also select this card for preview
-      if (e.target.checked) state.checked.add(f.path);
-      else state.checked.delete(f.path);
-      render();
-    });
     grid.appendChild(card);
   });
+  // Clicking empty space within the grid (not on a card) clears the
+  // selection, same as clicking blank space in a file explorer window.
+  // `container` (#grid-wrap) is reused across partial re-renders — e.g. every
+  // search keystroke — so this is assigned via .onclick (a single slot) rather
+  // than addEventListener, which would otherwise stack a new listener each time.
+  container.onclick = (e) => {
+    if (e.target === container || e.target === grid) {
+      state.selected = new Set();
+      render();
+    }
+  };
   container.appendChild(grid);
 }
 
-function renderPreview(file) {
+// The preview pane is now a permanent fixture of the layout (see render()),
+// showing one of three things depending on the current selection: nothing
+// selected, exactly one file (the original single-file editor), or many files
+// (mini thumbnails + batch-aware move/tag/autorename/comment controls).
+function renderPreview() {
+  const files = getSelectedFiles();
+  if (files.length === 0) return renderPreviewEmpty();
+  if (files.length === 1) return renderPreviewSingle(files[0]);
+  return renderPreviewMulti(files);
+}
+
+function renderPreviewEmpty() {
+  return el(`
+    <aside class="bm-preview bm-preview-empty">
+      <div class="bm-preview-empty-inner">
+        <div class="bm-preview-empty-icon">${ICONS.emptyFolder}</div>
+        <div class="bm-preview-empty-title">Nothing selected</div>
+        <div class="bm-preview-empty-hint">Click a file to preview it. Ctrl-click or Shift-click to select more than one.</div>
+      </div>
+    </aside>
+  `);
+}
+
+// The Location field (move-destination select + Autorename button) is shared
+// between the single- and multi-file preview, since both are driven by the
+// same moveSelected()/autorenameSelected() functions — only the label and the
+// select's currently-highlighted option differ.
+function renderLocationField(file) {
+  if (state.allFolders.length === 0) return "";
+  return `
+    <div>
+      <div class="bm-field">
+        <label class="bm-field-label" for="move-select">${file ? "Location" : "Move selection to"}</label>
+        <div class="bm-field-row">
+          <select class="bm-select" id="move-select" title="Move the selected file(s) to a different subfolder">
+            ${file ? "" : `<option value="__placeholder__" selected disabled>Choose a folder…</option>`}
+            <option value="" ${file && file.dir === "" ? "selected" : ""}>Root folder</option>
+            ${state.allFolders
+              .map(
+                (f) =>
+                  `<option value="${f.replace(/"/g, "&quot;")}" ${file && file.dir === f ? "selected" : ""}>${f}</option>`
+              )
+              .join("")}
+          </select>
+          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wireLocationField(panel) {
+  const moveSelect = panel.querySelector("#move-select");
+  if (moveSelect) {
+    moveSelect.addEventListener("change", (e) => {
+      if (e.target.value === "__placeholder__") return;
+      moveSelected(e.target.value);
+    });
+  }
+  const autorenameBtn = panel.querySelector("#autorename-btn");
+  if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameSelected);
+}
+
+function renderPreviewSingle(file) {
   const panel = el(`
     <aside class="bm-preview">
       <div class="bm-preview-header">
@@ -1476,32 +1590,17 @@ function renderPreview(file) {
       <div class="bm-preview-plate" id="preview-frame-wrap" title="Double-click to open in default app">
         ${
           file.ext === ".pdf"
-            ? `<embed src="${file.url}" type="application/pdf" />`
+            // Chromium's built-in PDF viewer (what <embed type="application/pdf">
+            // renders) honors these as URL fragment params: toolbar=0/navpanes=0
+            // drop its own download/print/menu bar, and view=Fit zooms the page to
+            // fit entirely within the plate instead of showing it at "actual size"
+            // with scrollbars — the fix for a badly-formatted/oversized PDF page.
+            ? `<embed src="${file.url}#toolbar=0&navpanes=0&view=Fit" type="application/pdf" />`
             : `<img src="${file.url}" alt="${file.name}" />`
         }
       </div>
       <div class="bm-preview-scroll">
-        ${
-          state.allFolders.length > 0
-            ? `<div>
-          <div class="bm-field">
-            <label class="bm-field-label" for="move-select">Location</label>
-            <div class="bm-field-row">
-              <select class="bm-select" id="move-select" title="Move to a different subfolder">
-                <option value="" ${file.dir === "" ? "selected" : ""}>Root folder</option>
-                ${state.allFolders
-                  .map(
-                    (f) =>
-                      `<option value="${f.replace(/"/g, "&quot;")}" ${file.dir === f ? "selected" : ""}>${f}</option>`
-                  )
-                  .join("")}
-              </select>
-              <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename this file to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
-            </div>
-          </div>
-        </div>`
-            : ""
-        }
+        ${renderLocationField(file)}
         <div>
           <div class="bm-section-label">Tags</div>
           <div class="bm-tag-editor" id="tag-editor">
@@ -1559,10 +1658,7 @@ function renderPreview(file) {
 
   panel.querySelector("#open-file-btn").addEventListener("click", () => openFile(file.path));
   panel.querySelector("#preview-frame-wrap").addEventListener("dblclick", () => openFile(file.path));
-  const moveSelect = panel.querySelector("#move-select");
-  if (moveSelect) moveSelect.addEventListener("change", (e) => moveFile(e.target.value));
-  const autorenameBtn = panel.querySelector("#autorename-btn");
-  if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameFile);
+  wireLocationField(panel);
   const tagSelect = panel.querySelector("#tag-select");
   if (tagSelect) {
     tagSelect.addEventListener("change", (e) => {
@@ -1577,7 +1673,7 @@ function renderPreview(file) {
   panel.querySelectorAll(".bm-comment-area").forEach((area) => {
     area.addEventListener("focus", (e) => {
       const idx = Number(e.target.dataset.idx);
-      const f = getSelected();
+      const f = getSelectedFiles()[0];
       if (f) commentEditSnapshot[idx] = { path: f.path, comments: [...f.comments] };
     });
     area.addEventListener("input", (e) => updateComment(Number(e.target.dataset.idx), e.target.value));
@@ -1585,7 +1681,7 @@ function renderPreview(file) {
       const idx = Number(e.target.dataset.idx);
       const before = commentEditSnapshot[idx];
       delete commentEditSnapshot[idx];
-      const f = getSelected();
+      const f = getSelectedFiles()[0];
       if (!before || !f || f.path !== before.path) return;
       if (JSON.stringify(before.comments) === JSON.stringify(f.comments)) return; // nothing changed since focus
       const path = before.path;
@@ -1597,7 +1693,107 @@ function renderPreview(file) {
     btn.addEventListener("click", () => removeComment(Number(btn.dataset.idx)));
   });
   panel.querySelector("#add-comment-btn").addEventListener("click", addComment);
-  panel.querySelector("#delete-btn").addEventListener("click", deleteFile);
+  panel.querySelector("#delete-btn").addEventListener("click", deleteSelected);
+
+  return panel;
+}
+
+function renderPreviewMulti(files) {
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  const sharedTags = files[0].tags.filter((t) => files.every((f) => f.tags.includes(t)));
+
+  const panel = el(`
+    <aside class="bm-preview">
+      <div class="bm-preview-header">
+        <div class="bm-preview-header-top">
+          <div class="bm-preview-name">${files.length} files selected</div>
+        </div>
+        <div class="bm-preview-meta">${formatSize(totalSize)} total</div>
+        <div class="bm-preview-delete-row">
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="delete-btn">${ICONS.trash} Delete ${files.length} files</button>
+        </div>
+      </div>
+      <div class="bm-preview-multi-grid" id="preview-multi-grid">
+        ${files
+          .map(
+            (f) => `
+          <div class="bm-mini-card" data-path="${f.path.replace(/"/g, "&quot;")}" title="${f.name.replace(/"/g, "&quot;")}">
+            <div class="bm-mini-thumb">${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" alt="" />`}</div>
+            <div class="bm-mini-name">${f.name}</div>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="bm-preview-scroll">
+        ${renderLocationField(null)}
+        <div>
+          <div class="bm-section-label">Tags shared by all ${files.length}</div>
+          <div class="bm-tag-editor" id="tag-editor">
+            ${
+              sharedTags.length === 0
+                ? `<span class="bm-tag-hint">No shared tags</span>`
+                : sharedTags
+                    .map(
+                      (t) => `<span class="bm-tag" data-tag="${t}"${tagStyleAttr(t)}>${t}<button class="bm-tag-remove" data-remove-tag="${t}">${ICONS.x}</button></span>`
+                    )
+                    .join("")
+            }
+          </div>
+          <div class="bm-tag-add-row">
+            ${(() => {
+              const available = state.predefinedTags.filter((t) => !sharedTags.includes(t.name));
+              if (state.predefinedTags.length === 0) {
+                return `<span class="bm-tag-hint">No predefined tags yet — <button class="bm-inline-link" id="open-tag-manager-hint">add some</button>.</span>`;
+              }
+              return `
+                <select class="bm-select" id="tag-select" ${available.length === 0 ? "disabled" : ""}>
+                  <option value="">${available.length === 0 ? "All tags applied" : "Add a tag to all…"}</option>
+                  ${available
+                    .map(
+                      (t) =>
+                        `<option value="${t.name.replace(/"/g, "&quot;")}">${t.name}${t.shortcut ? ` (${t.shortcut})` : ""}</option>`
+                    )
+                    .join("")}
+                </select>`;
+            })()}
+          </div>
+        </div>
+        <div>
+          <div class="bm-section-label">Comments</div>
+          <div class="bm-comment-row">
+            <textarea class="bm-comment-area" id="bulk-comment-area" placeholder="Write a comment to add to all ${files.length} files…"></textarea>
+          </div>
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="add-comment-btn">${ICONS.plus} Add to ${files.length} files</button>
+        </div>
+      </div>
+    </aside>
+  `);
+
+  panel.querySelector("#delete-btn").addEventListener("click", deleteSelected);
+  panel.querySelectorAll(".bm-mini-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const p = card.dataset.path;
+      state.selected = new Set([p]);
+      state.selectAnchor = p;
+      render();
+    });
+  });
+  wireLocationField(panel);
+  const tagSelect = panel.querySelector("#tag-select");
+  if (tagSelect) {
+    tagSelect.addEventListener("change", (e) => {
+      if (e.target.value) addTag(e.target.value);
+    });
+  }
+  const openHint = panel.querySelector("#open-tag-manager-hint");
+  if (openHint) openHint.addEventListener("click", openTagManager);
+  panel.querySelectorAll("[data-remove-tag]").forEach((btn) => {
+    btn.addEventListener("click", () => removeTag(btn.dataset.removeTag));
+  });
+  panel.querySelector("#add-comment-btn").addEventListener("click", () => {
+    const area = panel.querySelector("#bulk-comment-area");
+    addCommentToSelected(area.value);
+  });
 
   return panel;
 }

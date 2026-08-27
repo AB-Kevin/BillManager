@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("api", {
   moveFiles: (folder, relPaths, destDir) => ipcRenderer.invoke("move-files-batch", folder, relPaths, destDir),
   renameFile: (folder, filename, newName) => ipcRenderer.invoke("rename-file", folder, filename, newName),
   autorenameFile: (folder, filename) => ipcRenderer.invoke("autorename-file", folder, filename),
+  autorenameFiles: (folder, relPaths) => ipcRenderer.invoke("autorename-files-batch", folder, relPaths),
   nudgeWindowFocus: () => ipcRenderer.invoke("nudge-window-focus"),
   openFile: (folder, filename) => ipcRenderer.invoke("open-file", folder, filename),
   getTagConfig: (folder) => ipcRenderer.invoke("get-tag-config", folder),

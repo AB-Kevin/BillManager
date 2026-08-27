@@ -436,6 +436,43 @@ ipcMain.handle("autorename-file", async (event, folder, relPath) => {
   return autorenameOneFile(folder, relPath);
 });
 
+// Autorenames many files in one action — e.g. a multi-select move that hit
+// collisions at the destination. All files share the same yyyyMMdd_HHmmss
+// stamp (they're being renamed in the same instant), so each gets a " (n)"
+// suffix — 1-indexed in selection order — to keep them from all colliding
+// with each other. Each file is attempted independently, mirroring
+// move-files-batch, so one locked/in-use file doesn't block the rest.
+function autorenameFilesBatch(folder, relPaths) {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  const moved = [];
+  const errors = [];
+  relPaths.forEach((relPath, i) => {
+    const ext = path.extname(relPath);
+    const dir = path.dirname(relPath);
+    const destDirRel = dir === "." ? "" : dir;
+    const destDirFull = path.join(folder, destDirRel);
+
+    let name = `${stamp} (${i + 1})${ext}`;
+    let n = 1;
+    while (fs.existsSync(path.join(destDirFull, name))) {
+      name = `${stamp} (${i + 1})_${n}${ext}`;
+      n++;
+    }
+
+    const result = renameOneFile(folder, relPath, name);
+    if (result.error) errors.push({ path: relPath, error: result.error });
+    else moved.push({ from: relPath, to: result.path });
+  });
+  return { moved, errors };
+}
+
+ipcMain.handle("autorename-files-batch", async (event, folder, relPaths) => {
+  return autorenameFilesBatch(folder, relPaths);
+});
+
 // Windows/Chromium quirk: after the DOM subtree holding a native <select> is torn
 // down and rebuilt (as happens on every full re-render following a file move),
 // Chromium can leave that select's popup-menu tracking orphaned, and clicking any
