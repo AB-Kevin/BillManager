@@ -363,6 +363,86 @@ ipcMain.handle("move-file", async (event, folder, relPath, destDir) => {
   return moveOneFile(folder, relPath, destDir);
 });
 
+// ---- Importing files dragged in from the OS file explorer ----
+
+// Expands one dropped OS path into a flat list of { srcAbs, relDest } pairs
+// ready to import. A plain file imports under just its own name; a dropped
+// directory recurses, preserving its internal structure under a folder named
+// after the directory itself (dotfiles/dotfolders skipped, same convention
+// walkFiles/walkFolders use for the catalog's own tree) — dragging a folder
+// of scanned bills in behaves the same way it would in a real file manager.
+function expandDroppedPath(absPath, relDest) {
+  const stat = fs.statSync(absPath);
+  if (stat.isFile()) return [{ srcAbs: absPath, relDest: relDest || path.basename(absPath) }];
+  if (!stat.isDirectory()) return [];
+  const base = relDest || path.basename(absPath);
+  let results = [];
+  for (const e of fs.readdirSync(absPath, { withFileTypes: true })) {
+    if (e.name.startsWith(".")) continue;
+    const childAbs = path.join(absPath, e.name);
+    const childRel = `${base}/${e.name}`;
+    if (e.isDirectory()) results = results.concat(expandDroppedPath(childAbs, childRel));
+    else if (e.isFile()) results.push({ srcAbs: childAbs, relDest: childRel });
+  }
+  return results;
+}
+
+// Copies one external file into `destDir` under the catalog folder — a COPY,
+// not a move (moveOneFile's move-within-the-catalog semantics don't apply;
+// the source lives outside anything the app manages, and dropping a file
+// shouldn't remove it from wherever the user dragged it from). Rejects
+// anything that isn't a catalog-accepted extension up front, and refuses to
+// clobber an existing file at the destination, same policy as moveOneFile.
+function importOneFile(folder, srcAbs, relDest, destDir) {
+  const name = path.basename(relDest);
+  const ext = path.extname(name).toLowerCase();
+  if (!ACCEPTED_EXT.includes(ext)) {
+    return { error: `"${name}" isn't a PDF, JPG, or PNG — skipped.` };
+  }
+  const newRelPath = destDir ? `${destDir}/${relDest}` : relDest;
+  const destFull = path.join(folder, newRelPath);
+  if (path.resolve(srcAbs) === path.resolve(destFull)) {
+    return { error: `"${name}" is already in that folder.` };
+  }
+  if (fs.existsSync(destFull)) {
+    return { error: `"${name}" already exists in that folder.` };
+  }
+  try {
+    fs.mkdirSync(path.dirname(destFull), { recursive: true });
+    fs.copyFileSync(srcAbs, destFull);
+  } catch (e) {
+    return { error: `Couldn't import "${name}": ${e.message}` };
+  }
+  return { path: newRelPath };
+}
+
+// `absPaths` are the dropped items' own absolute OS paths (files or
+// directories) — resolved renderer-side via webUtils.getPathForFile, since a
+// browser File object never carries one. Each is attempted independently, per
+// the collision/failure policy above, so one bad file never blocks the rest.
+ipcMain.handle("import-files", async (event, folder, absPaths, destDir) => {
+  let entries = [];
+  for (const p of absPaths) {
+    try {
+      entries = entries.concat(expandDroppedPath(p, null));
+    } catch (e) {
+      entries.push({ srcAbs: p, relDest: path.basename(p), statError: e.message });
+    }
+  }
+  const imported = [];
+  const errors = [];
+  for (const { srcAbs, relDest, statError } of entries) {
+    if (statError) {
+      errors.push({ path: srcAbs, error: `Couldn't read "${path.basename(srcAbs)}": ${statError}` });
+      continue;
+    }
+    const result = importOneFile(folder, srcAbs, relDest, destDir);
+    if (result.error) errors.push({ path: srcAbs, error: result.error });
+    else imported.push(result.path);
+  }
+  return { imported, errors };
+});
+
 // Moves many files into `destDir` in one call — e.g. a "move every file with
 // this tag" bulk action. Each file is attempted independently, so one name
 // collision doesn't block the rest; per-file failures are reported back for

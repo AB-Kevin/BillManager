@@ -1,14 +1,20 @@
 /* BillManager — Anabaptist Brotherhood design system.
-   Tokens mirrored from design_handoff_billmanager_refresh/_ds/.../tokens/*.css —
-   keep these in sync with that handoff rather than eyeballing new values. */
+   Tokens mirrored from the anabaptist-brotherhood-design system's
+   tokens/*.css (Brand & Design Manual v1.1) — keep these in sync with that
+   source rather than eyeballing new values. v1.1 corrected the brand green
+   (was #006E47, a documented v1.0 error) and added Brotherhood Maroon as a
+   narrow secondary color: solid CTAs only, never structural (headings,
+   rules, rails, links stay green). */
 :root {
   /* Color */
   --green-700: #005537;
   --green-600: #006140;
-  --green-500: #006e47; /* brand */
+  --green-500: #006d46; /* brand — corrected from #006E47 (v1.0 error) */
   --green-300: #bbcfc4;
   --green-100: #e8f1ec;
   --green-050: #f4f8f6;
+  --maroon-600: #6e3745; /* Deep Maroon — hover/pressed only */
+  --maroon-500: #864855; /* Brotherhood Maroon — secondary, CTAs only */
   --gray-900: #231f20;
   --gray-600: #58595b;
   --gray-400: #8a8b8d;
@@ -28,6 +34,7 @@
   --surface-page: var(--white);
   --surface-card-alt: var(--green-050);
   --surface-rail: var(--green-500);
+  --brand-maroon: var(--maroon-500);
   --overlay-scrim: rgba(35, 31, 32, 0.45);
 
   /* Type */
@@ -196,6 +203,10 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-nav-item:hover { background: rgba(255, 255, 255, 0.1); }
 .bm-nav-item.active { background: var(--white); color: var(--green-500); font-weight: 500; }
+/* Special/meta filter row (e.g. "Loose files") rather than a real folder —
+   dimmed the same way .bm-tag-nav's "No tags" row is relative to real tags. */
+.bm-nav-item.dim { color: rgba(255, 255, 255, 0.7); }
+.bm-nav-item.dim.active { color: var(--green-500); } /* same cascade fix .bm-tag-nav.dim.active needed — .dim would otherwise win over .active's color, both being 2-class rules */
 .bm-nav-name { display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-nav-count { font-size: 12px; flex-shrink: 0; }
 .bm-folder-nav-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-bottom: var(--space-2); }
@@ -208,8 +219,24 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-tag-nav:hover { background: rgba(255, 255, 255, 0.1); }
 .bm-tag-nav.active { background: var(--white); color: var(--green-500); font-weight: 500; }
 .bm-tag-nav.dim { color: rgba(255, 255, 255, 0.7); }
+/* .dim and .active are both 2-class selectors, so .dim (defined later) was
+   winning the cascade on "No tags" when it's active — near-white text on
+   the white active background it inherits from the rule above, invisible.
+   3 classes beats both, regardless of source order. */
+.bm-tag-nav.dim.active { color: var(--green-500); }
 .bm-tag-nav-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* Real tags render as their own colored .bm-tag pill (same component the
+   file grid/list/preview use) rather than plain reversed text — the pill's
+   own tint is tuned for a white surface, so it sits on a small white plate
+   just big enough to hold it, not the folder-style full-width white fill
+   .bm-tag-nav.active uses (higher specificity than the plain .active rule
+   above, so it wins for pilled rows without touching the untagged/"No tags"
+   row, which has no pill and keeps that original treatment). */
+.bm-tag-nav-pilled { justify-content: space-between; }
+.bm-tag-nav-pill-wrap { display: inline-flex; min-width: 0; background: var(--white); border-radius: 999px; padding: 3px; }
+.bm-tag-nav-pill-wrap .bm-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-tag-nav.bm-tag-nav-pilled.active { background: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.92); font-weight: 400; }
 .bm-rail-empty { font-size: 12px; color: rgba(255, 255, 255, 0.7); padding: 4px var(--space-3); }
 
 .bm-rail-footer {
@@ -242,8 +269,23 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-btn-primary:hover:not(:disabled) { background: var(--green-600); }
 .bm-btn-primary:active:not(:disabled) { background: var(--green-700); }
 
+/* Maroon is the design system's secondary color — narrow use only: solid
+   CTAs (a form's submit button), never structural chrome. Only one solid
+   button per view, and never a green solid next to a maroon solid — the
+   manage-tags modal's "Save changes" button (#tag-modal-save in
+   renderer.js) is the one place this applies today. */
+.bm-btn-primary.bm-btn-maroon { background: var(--maroon-500); border-color: var(--maroon-500); }
+.bm-btn-primary.bm-btn-maroon:hover:not(:disabled),
+.bm-btn-primary.bm-btn-maroon:active:not(:disabled) { background: var(--maroon-600); border-color: var(--maroon-600); }
+
 .bm-btn-secondary { background: var(--white); color: var(--green-500); border-color: var(--green-500); }
 .bm-btn-secondary:hover:not(:disabled) { background: var(--green-100); }
+
+/* No maroon tint token exists (deliberate, per the design system) — shade
+   the hover directly off --maroon-500 instead, same as the DS Button
+   component's own outline-maroon treatment. */
+.bm-btn-secondary.bm-btn-maroon { color: var(--maroon-500); border-color: var(--maroon-500); }
+.bm-btn-secondary.bm-btn-maroon:hover:not(:disabled) { background: rgba(134, 72, 85, 0.08); }
 
 .bm-btn-ghost { background: none; color: var(--green-500); border-color: transparent; padding-left: 8px; padding-right: 8px; }
 .bm-btn-ghost:hover:not(:disabled) { background: var(--green-100); }
@@ -281,7 +323,20 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-toolbar-search .bm-search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .bm-toolbar-search input { padding-left: 34px; }
 .bm-toolbar-sort { width: 200px; flex-shrink: 0; }
+.bm-toolbar-view { flex-shrink: 0; margin-bottom: 1px; }
 .bm-toolbar-undo { flex-shrink: 0; margin-bottom: 1px; }
+
+/* ---- Grid/list view toggle ---- */
+.bm-view-toggle { display: inline-flex; height: 40px; border: 1px solid var(--border-hairline); border-radius: var(--radius-control); overflow: hidden; }
+.bm-view-toggle-btn {
+  width: 40px; height: 100%; display: flex; align-items: center; justify-content: center;
+  border: none; background: var(--white); color: var(--gray-400); padding: 0; cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.bm-view-toggle-btn + .bm-view-toggle-btn { border-left: 1px solid var(--border-hairline); }
+.bm-view-toggle-btn:hover:not(.active):not(:disabled) { background: var(--gray-100); color: var(--text-body); }
+.bm-view-toggle-btn.active { background: var(--green-500); color: var(--white); }
+.bm-view-toggle-btn:disabled { opacity: 0.45; cursor: default; }
 
 .bm-rule-row {
   display: flex; align-items: center; justify-content: space-between;
@@ -301,6 +356,10 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-active-filter button { border: none; background: none; cursor: pointer; display: flex; color: inherit; padding: 0; }
 
 .bm-grid-wrap { flex: 1; overflow-y: auto; padding: var(--space-5) var(--space-6) var(--space-7); }
+/* Dragging files in from the OS file explorer (see renderGridInto's
+   dragenter/dragover/dragleave/drop wiring) — inset so it never shifts
+   layout, same trick .bm-card.selected's box-shadow ring already uses. */
+.bm-grid-wrap.drag-over { background: var(--green-050); box-shadow: inset 0 0 0 2px var(--green-500); }
 .bm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4); }
 
 .bm-card {
@@ -338,6 +397,80 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-card-dir svg { flex-shrink: 0; opacity: 0.7; }
 .bm-card-tags { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px; }
+
+/* ---- List view (alternate to the card grid, toggled via .bm-toolbar-view)
+   Each row is still a .bm-card — same element moveGridRow/scrollCardIntoView
+   query for keyboard nav — just laid out as a single-column table row instead
+   of a thumbnail tile, so no view-mode branching was needed there.
+
+   Column widths: thumb and open are fixed, Name is the flexible remainder,
+   and the rest read from --col-dir/--col-tags/--col-size/--col-date — plain
+   custom properties set on #grid-wrap itself (see applyListColWidths /
+   startColumnResize in renderer.js) and inherited from there by both the
+   header and every row, so a live resize drag only ever touches one element.
+   Never `auto` — a fixed/var()/minmax(_,1fr) track computes the same on every
+   independent per-row grid given the same container width, which is what
+   keeps the header and every row's columns aligned despite not sharing one
+   grid container. */
+.bm-list-header,
+.bm-grid.bm-grid-list .bm-card.bm-list-row {
+  display: grid;
+  grid-template-columns: 28px minmax(80px, 1fr) var(--col-dir, 140px) var(--col-tags, 130px) var(--col-size, 70px) var(--col-date, 110px) 24px;
+  align-items: center; gap: var(--space-3);
+}
+.bm-list-header {
+  height: 32px; padding: 0 var(--space-3); margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border-rule-soft); flex-shrink: 0;
+}
+.bm-list-header-spacer { width: 100%; height: 100%; }
+.bm-list-header-sort {
+  position: relative; display: flex; align-items: center; gap: 5px; height: 100%; min-width: 0;
+  border: none; background: none; padding: 0; margin: 0; cursor: pointer; text-align: left;
+  font-family: var(--font-condensed); font-size: 11px; letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-caption);
+}
+.bm-list-header-sort:hover { color: var(--text-body); }
+.bm-list-header-sort.active { color: var(--green-500); }
+.bm-list-header-sort span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-col-resize {
+  position: absolute; top: 0; right: calc(var(--space-3) / -2 - 1px); width: var(--space-3); height: 100%;
+  cursor: col-resize;
+}
+.bm-col-resize::after { content: ""; position: absolute; top: 4px; bottom: 4px; left: 50%; width: 1px; background: var(--border-hairline); }
+.bm-col-resize:hover::after { background: var(--green-500); width: 2px; margin-left: -0.5px; }
+
+.bm-grid.bm-grid-list { display: flex; flex-direction: column; gap: 0; }
+.bm-grid.bm-grid-list .bm-card.bm-list-row {
+  height: 40px; padding: 0 var(--space-3);
+  border: 1px solid transparent; border-bottom: 1px solid var(--border-hairline); border-radius: 0;
+}
+.bm-grid.bm-grid-list .bm-card.bm-list-row:hover { border-color: transparent; background: var(--surface-card-alt); }
+.bm-grid.bm-grid-list .bm-card.bm-list-row.selected { border-color: var(--green-500); box-shadow: none; background: var(--green-050); }
+.bm-list-thumb {
+  width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-control); overflow: hidden;
+  background: var(--surface-card-alt); border: 1px solid var(--border-hairline);
+  display: flex; align-items: center; justify-content: center;
+}
+.bm-list-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.bm-list-thumb svg { width: 14px; height: 17px; }
+.bm-list-name { font-size: 13px; color: var(--text-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-list-dir {
+  display: flex; align-items: center; gap: 4px; font-family: var(--font-condensed); font-size: 12px; color: var(--text-caption);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bm-list-dir svg { flex-shrink: 0; opacity: 0.7; }
+.bm-list-tags { display: flex; align-items: center; gap: 5px; overflow: hidden; white-space: nowrap; }
+.bm-list-size, .bm-list-date {
+  font-family: var(--font-condensed); font-size: 12px; color: var(--text-caption); text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bm-list-open {
+  width: 24px; height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer;
+  opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+.bm-grid.bm-grid-list .bm-card.bm-list-row:hover .bm-list-open { opacity: 1; }
+.bm-list-open:hover { background: var(--green-100); color: var(--green-500); }
 
 .bm-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -378,14 +511,57 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-preview-plate img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .bm-preview-plate embed { width: 100%; height: 100%; }
 .bm-preview-plate-doc { width: 150px; height: 200px; background: var(--white); border: 1px solid var(--border-hairline); display: flex; flex-direction: column; gap: 7px; padding: 14px; }
-.bm-preview-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-5); }
+.bm-preview-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+/* Hairline between sections (Location, Tags, Comments, …) — replaces the
+   old plain `gap` with the same spacing, now carried as padding-top so a
+   border-top has somewhere to sit; still no rule (or gap) before the first
+   section, same as `gap` never added space before/after the flex ends. A
+   small margin-bottom on every section but the last keeps the line off the
+   previous section's own content instead of sitting flush against it. */
+.bm-preview-scroll > *:not(:last-child) { margin-bottom: var(--space-2); }
+.bm-preview-scroll > * + * { padding-top: var(--space-5); border-top: 1px solid var(--border-hairline); }
 
-/* Nothing selected — takes the whole preview column instead of the usual header/plate/scroll layout. */
-.bm-preview.bm-preview-empty { align-items: center; justify-content: center; }
-.bm-preview-empty-inner { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-6); }
+/* Nothing selected. Two shapes (see renderPreviewEmpty): no folder open at
+   all keeps the plain centered icon/message (.bm-preview-empty-inner
+   self-centers via margin:auto rather than the parent forcing it, so it
+   doesn't fight the OTHER shape's normal top-down flow below); a folder
+   open but nothing selected becomes a small dashboard — a highlighted
+   reminder card, then This folder/Recent sections in the ordinary
+   .bm-preview-scroll (same hairline-between-sections treatment the
+   single/multi-file preview's Tags/Comments sections already use). */
+.bm-preview-empty-inner { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; padding: var(--space-6); margin: auto; }
 .bm-preview-empty-icon svg { opacity: 0.5; }
 .bm-preview-empty-title { font-size: 15px; font-weight: 600; color: var(--text-heading); }
 .bm-preview-empty-hint { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; max-width: 220px; }
+
+.bm-preview-empty-highlight {
+  background: var(--green-100); border-radius: 8px; padding: var(--space-5); text-align: center; flex-shrink: 0;
+}
+.bm-preview-empty-highlight .bm-preview-empty-title { margin-bottom: 6px; }
+.bm-preview-empty-highlight .bm-preview-empty-hint { max-width: none; }
+
+.bm-stat-list { display: flex; flex-direction: column; }
+.bm-stat-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: 11px 0; font-size: 13px; color: var(--text-body);
+}
+.bm-stat-row:not(:last-child) { border-bottom: 1px solid var(--border-hairline); }
+.bm-stat-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.bm-recent-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.bm-recent-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.bm-recent-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bm-recent-label { font-size: 13px; color: var(--text-body); line-height: 1.35; }
+.bm-recent-time { font-family: var(--font-condensed); font-size: 11.5px; letter-spacing: var(--tracking-label); color: var(--text-caption); }
+/* Per-row undo (see undoActionById) — reveal-on-hover, same pattern as the
+   grid/list card's own open-file button. */
+.bm-recent-undo-btn {
+  flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer;
+  opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+.bm-recent-item:hover .bm-recent-undo-btn { opacity: 1; }
+.bm-recent-undo-btn:hover { background: var(--green-100); color: var(--green-500); }
 
 /* Multi-select preview — replaces the single big .bm-preview-plate with a
    scrollable grid of mini thumbnails, one per selected file. Clicking one

@@ -8,12 +8,16 @@ const ICONS = {
   plus: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   pencil: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>`,
   open: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
-  filetext: `<svg width="34" height="42" viewBox="0 0 34 42"><rect x="0.5" y="0.5" width="33" height="41" fill="#FFFFFF" stroke="#BBCFC4"/><rect x="7" y="11" width="20" height="2" fill="#006E47"/><rect x="7" y="18" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="23" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="28" width="12" height="1" fill="#D5D6D7"/></svg>`,
+  filetext: `<svg width="34" height="42" viewBox="0 0 34 42"><rect x="0.5" y="0.5" width="33" height="41" fill="#FFFFFF" stroke="#BBCFC4"/><rect x="7" y="11" width="20" height="2" fill="#006D46"/><rect x="7" y="18" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="23" width="20" height="1" fill="#D5D6D7"/><rect x="7" y="28" width="12" height="1" fill="#D5D6D7"/></svg>`,
   emptyFolder: `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#58595B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>`,
   refresh: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><polyline points="21 3 21 8 16 8"/><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><polyline points="3 21 3 16 8 16"/></svg>`,
   undo: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>`,
   download: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  grid: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>`,
+  list: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><line x1="4" y1="6" x2="4.01" y2="6"/><line x1="4" y1="12" x2="4.01" y2="12"/><line x1="4" y1="18" x2="4.01" y2="18"/></svg>`,
+  sortAsc: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>`,
+  sortDesc: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   winMinimize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="4.5" width="10" height="1" fill="currentColor"/></svg>`,
   winMaximize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>`,
   winRestore: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="2.5" y="0.5" width="7" height="7" fill="none" stroke="currentColor"/><path d="M0.5 2.5V9.5H7.5" fill="none" stroke="currentColor"/></svg>`,
@@ -24,10 +28,10 @@ const ICONS = {
 // a rounded green square with two layered document sheets. `reversed` swaps it for
 // the white-plate variant used on the About window's green band.
 function appMark(size, reversed) {
-  const square = reversed ? "#FFFFFF" : "#006E47";
+  const square = reversed ? "#FFFFFF" : "#006D46";
   const back = "#BBCFC4";
-  const front = reversed ? "#006E47" : "#FFFFFF";
-  const mark = reversed ? "#FFFFFF" : "#006E47";
+  const front = reversed ? "#006D46" : "#FFFFFF";
+  const mark = reversed ? "#FFFFFF" : "#006D46";
   return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true">
     <rect width="32" height="32" rx="7" fill="${square}"/>
     <rect x="6" y="9" width="14" height="17" fill="${back}"/>
@@ -36,6 +40,64 @@ function appMark(size, reversed) {
     <rect x="11.5" y="14" width="9" height="1" fill="${back}"/>
     <rect x="11.5" y="17.5" width="6" height="1" fill="${back}"/>
   </svg>`;
+}
+
+// Grid vs list is a pure display preference, not catalog data — this app
+// otherwise persists things like the last-opened folder as files under its
+// own userData dir (see main.js), but that's for state other processes/a
+// future session need to read back reliably. This one's cosmetic-only and
+// renderer-local, so localStorage is the right-sized tool for it.
+function loadViewMode() {
+  try {
+    return localStorage.getItem("bm-view-mode") === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
+}
+function saveViewMode(mode) {
+  try {
+    localStorage.setItem("bm-view-mode", mode);
+  } catch {
+    /* private-mode/storage-disabled — the preference just won't survive restart */
+  }
+}
+
+// List-view column widths, same persistence rationale as viewMode above.
+// Keyed by the resizable columns only — thumb/open are fixed, and Name is
+// the flexible remainder (see .bm-list-header/.bm-list-row's shared
+// grid-template-columns in styles.css) so it isn't stored here.
+const DEFAULT_LIST_COL_WIDTHS = { dir: 140, tags: 130, size: 70, date: 110 };
+function loadListColWidths() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("bm-list-col-widths"));
+    return { ...DEFAULT_LIST_COL_WIDTHS, ...saved };
+  } catch {
+    return { ...DEFAULT_LIST_COL_WIDTHS };
+  }
+}
+function saveListColWidths(widths) {
+  try {
+    localStorage.setItem("bm-list-col-widths", JSON.stringify(widths));
+  } catch {
+    /* private-mode/storage-disabled — widths just won't survive restart */
+  }
+}
+
+// Each sort column's natural starting direction when a header/the sort
+// dropdown switches TO it (name/tag/dir read best A→Z; size/date read best
+// biggest-or-newest-first) — a fresh switch always starts here rather than
+// carrying over whatever direction the previously active column was in.
+const SORT_DEFAULT_DIR = { name: "asc", date: "desc", tag: "asc", dir: "asc", size: "desc" };
+// Shared by the sort dropdown and the list-view header cells: switching to a
+// new column resets to its natural direction; clicking the column that's
+// already active flips direction instead.
+function setSortBy(key) {
+  if (state.sortBy === key) {
+    state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+  } else {
+    state.sortBy = key;
+    state.sortDir = SORT_DEFAULT_DIR[key] || "asc";
+  }
 }
 
 const state = {
@@ -48,7 +110,11 @@ const state = {
   activeTags: new Set(), // tag names currently filtering the grid (AND — a file matches only if it has all of them)
   activeFolder: null, // relative path of the subfolder filter, or null for "All files" (recursive)
   untaggedOnly: false, // true to show only files with zero tags
-  sortBy: "name", // "name" | "date" | "tag"
+  looseOnly: false, // true to show only files directly in the catalog root (dir === "") — mutually exclusive with activeFolder, same as untaggedOnly is with activeTags
+  sortBy: "name", // "name" | "date" | "tag" | "dir" | "size"
+  sortDir: "asc", // "asc" | "desc" — see SORT_DEFAULT_DIR/setSortBy above
+  viewMode: loadViewMode(), // "grid" | "list" — see loadViewMode/saveViewMode above
+  listColWidths: loadListColWidths(), // { dir, tags, size, date } px — list-view column widths
   allFolders: [], // relative paths of every subfolder in the catalog, incl. empty ones — move destinations
   predefinedTags: [], // [{ name, shortcut, color }] — curated vocabulary + keyboard shortcuts, per folder
   tagModalOpen: false,
@@ -66,7 +132,7 @@ const state = {
 // Brand green and brand gray first (the system's two native tones), then a run of
 // muted, desaturated accents for telling many custom tags apart without straying
 // into saturated/primary territory the rest of the design system avoids.
-const TAG_COLOR_PALETTE = ["#006E47", "#58595B", "#8A6F3D", "#4A6FA5", "#7A5980", "#5C7A3D", "#9C4A3D", "#3D6B7A"];
+const TAG_COLOR_PALETTE = ["#006D46", "#58595B", "#8A6F3D", "#4A6FA5", "#7A5980", "#5C7A3D", "#9C4A3D", "#3D6B7A"];
 
 const app = document.getElementById("app");
 
@@ -78,16 +144,37 @@ const app = document.getElementById("app");
 // its entries close over paths in the *previous* catalog.
 let undoStack = [];
 const MAX_UNDO = 50; // oldest entries just age out; any trashed file they reference is purged on next launch anyway
+let undoIdCounter = 0; // stable per-entry id — the preview pane's "Recent" list (see renderPreviewEmpty) needs to target one specific entry regardless of where it sits in the stack, which a plain array index can't survive across a re-render
 
 function pushUndo(label, undo) {
-  undoStack.push({ label, undo });
+  // `time`/`id` ride along for the preview pane's "Recent" activity list (see
+  // renderPreviewEmpty) — this stack is otherwise purely an undo mechanism,
+  // but every mutating action already funnels through here with a
+  // human-readable label, which is exactly what a recent-activity feed needs.
+  undoStack.push({ id: ++undoIdCounter, label, undo, time: Date.now() });
   if (undoStack.length > MAX_UNDO) undoStack.shift();
   render();
 }
 
+// Undoes the most recent action — the toolbar Undo button and Ctrl+Z.
 async function performUndo() {
-  const action = undoStack.pop();
-  if (!action) return;
+  const last = undoStack[undoStack.length - 1];
+  if (!last) return;
+  await undoActionById(last.id);
+}
+
+// Undoes one specific action regardless of where it sits in the stack — the
+// "Recent" list's per-row undo button. Splicing it out (rather than only ever
+// popping the top) means an action can be undone out of order; later entries
+// still in the stack keep referencing whatever they originally closed over,
+// which is usually fine (each undo call is self-contained) but can occasionally
+// compound oddly if a later action really did depend on this one having
+// happened first (e.g. a tag edit on a file an earlier-in-the-stack move is
+// about to relocate) — an inherent tradeoff of allowing out-of-order undo at all.
+async function undoActionById(id) {
+  const idx = undoStack.findIndex((a) => a.id === id);
+  if (idx === -1) return;
+  const [action] = undoStack.splice(idx, 1);
   try {
     await action.undo();
   } catch (e) {
@@ -154,11 +241,34 @@ async function waitForPendingMetaWrites() {
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  // GB tier: a single catalog file never gets this big, but the preview
+  // pane's "This folder" total (see renderPreviewEmpty) sums every file in
+  // the folder, which routinely does.
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 function formatDate(ms) {
   return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+// "Recent" activity timestamps (see renderPreviewEmpty) — a short window as
+// minutes-ago, today's entries with a clock time, yesterday by name, and a
+// plain date beyond that (formatDate above).
+function formatRelativeTime(ms) {
+  const now = Date.now();
+  const diffMin = Math.floor((now - ms) / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
+  const d = new Date(ms);
+  const today = new Date(now);
+  if (d.toDateString() === today.toDateString()) {
+    return `Today, ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return formatDate(ms);
 }
 
 function escapeHtml(str) {
@@ -238,7 +348,7 @@ function clamp(min, max, v) {
 
 function hexToRgb(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
-  const clean = m ? m[1] : "006e47";
+  const clean = m ? m[1] : "006d46";
   return {
     r: parseInt(clean.slice(0, 2), 16),
     g: parseInt(clean.slice(2, 4), 16),
@@ -312,18 +422,27 @@ function tagStyleAttr(tagName) {
 
 function sortFiles(files) {
   const arr = [...files];
+  const dm = state.sortDir === "desc" ? -1 : 1; // direction multiplier
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
   if (state.sortBy === "name") {
-    arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    arr.sort((a, b) => dm * byName(a, b));
   } else if (state.sortBy === "date") {
-    arr.sort((a, b) => b.created - a.created); // newest first
+    arr.sort((a, b) => dm * (a.created - b.created)); // dm=-1 (the default for "date") reads newest first
+  } else if (state.sortBy === "size") {
+    arr.sort((a, b) => dm * (a.size - b.size));
+  } else if (state.sortBy === "dir") {
+    arr.sort((a, b) => {
+      const cmp = dm * (a.dir || "").localeCompare(b.dir || "", undefined, { sensitivity: "base" });
+      return cmp !== 0 ? cmp : byName(a, b);
+    });
   } else if (state.sortBy === "tag") {
     arr.sort((a, b) => {
       const at = [...a.tags].sort()[0] || "";
       const bt = [...b.tags].sort()[0] || "";
-      if (!at && bt) return 1; // untagged files sink to the bottom
+      if (!at && bt) return 1; // untagged files sink to the bottom regardless of direction
       if (at && !bt) return -1;
-      const cmp = at.localeCompare(bt, undefined, { sensitivity: "base" });
-      return cmp !== 0 ? cmp : a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      const cmp = dm * at.localeCompare(bt, undefined, { sensitivity: "base" });
+      return cmp !== 0 ? cmp : byName(a, b);
     });
   }
   return arr;
@@ -334,7 +453,8 @@ function getFiltered() {
     .filter((f) => f.name.toLowerCase().includes(state.search.toLowerCase()))
     .filter((f) => !state.untaggedOnly || f.tags.length === 0)
     .filter((f) => [...state.activeTags].every((t) => f.tags.includes(t)))
-    .filter((f) => !state.activeFolder || f.dir === state.activeFolder || f.dir.startsWith(state.activeFolder + "/"));
+    .filter((f) => !state.activeFolder || f.dir === state.activeFolder || f.dir.startsWith(state.activeFolder + "/"))
+    .filter((f) => !state.looseOnly || f.dir === "");
   return sortFiles(filtered);
 }
 
@@ -406,6 +526,7 @@ async function openFolder(folder, isStartup = false) {
   state.activeTags = new Set();
   state.activeFolder = null;
   state.untaggedOnly = false;
+  state.looseOnly = false;
   state.search = "";
   undoStack = []; // entries close over paths in the previous folder — discard them
   state.predefinedTags = await window.api.getTagConfig(folder);
@@ -727,6 +848,53 @@ async function undoBulkDelete(deleted) {
   }
 }
 
+// ---- Drag-and-drop import from the OS file explorer ----
+
+// `absPaths` are the dropped items' resolved absolute OS paths (see the
+// drop handler in renderGridInto, which resolves each File via
+// window.api.getPathForFile before calling this). Imports into whatever
+// subfolder is currently active (root if "All files"/no folder filter) —
+// mirrors where the file grid drops you're currently looking at, the same
+// destination moveSelected would use. Copies rather than moves (see
+// importOneFile in main.js), so the newly-added files land selected and
+// undoing sends them to trash — deleteSelected's own undo path, run
+// forward instead of back.
+async function importDroppedFiles(absPaths) {
+  if (!state.folder || absPaths.length === 0) return;
+  const destDir = state.activeFolder || "";
+  let imported = [];
+  let errors = [];
+  try {
+    const result = await window.api.importFiles(state.folder, absPaths, destDir);
+    imported = (result && result.imported) || [];
+    errors = (result && result.errors) || [];
+  } catch (e) {
+    errors = absPaths.map((p) => ({ path: p, error: e.message || String(e) }));
+  } finally {
+    if (imported.length > 0) {
+      state.selected = new Set(imported);
+      state.selectAnchor = imported[imported.length - 1];
+    }
+    await refreshFiles();
+  }
+  if (imported.length > 0) {
+    pushUndo(`Import ${imported.length} file${imported.length === 1 ? "" : "s"}`, async () => {
+      const r = await window.api.deleteFiles(state.folder, imported);
+      if (r && r.errors && r.errors.length > 0) {
+        throw new Error(r.errors.map((e) => `${e.path}: ${e.error}`).join("; "));
+      }
+      await refreshFiles();
+    });
+  }
+  if (errors.length > 0) {
+    const total = imported.length + errors.length;
+    alert(
+      `Imported ${imported.length} of ${total} file(s). ${errors.length} skipped:\n\n` +
+        errors.map((e) => `• ${e.path}: ${e.error}`).join("\n")
+    );
+  }
+}
+
 // ---- Predefined tags (dropdown vocabulary + keyboard shortcuts) ----
 
 function comboFromEvent(e) {
@@ -930,7 +1098,7 @@ function detachColorPickerOutsideHandler() {
 }
 
 function openColorPicker(idx) {
-  const hex = state.tagModalDraft[idx].color || "#006E47";
+  const hex = state.tagModalDraft[idx].color || "#006D46";
   const { r, g, b } = hexToRgb(hex);
   state.colorPicker = { idx, ...rgbToHsv(r, g, b) };
   attachColorPickerOutsideHandler();
@@ -973,6 +1141,33 @@ document.addEventListener("keydown", (e) => {
   e.preventDefault();
   performUndo();
 });
+
+// Ctrl+A (Cmd+A on macOS, though this app targets Windows) selects every file
+// in the current view — same result as checking the rule row's "Select all"
+// box. Skipped in a text field so native select-all-text still works there
+// (same guard Ctrl+Z uses), and while a modal's open, matching the arrow-key
+// nav guard — selecting files behind an open tag manager/about/color picker
+// would be a confusing side effect the user can't even see happen.
+document.addEventListener("keydown", (e) => {
+  if (isEditableTarget(document.activeElement)) return;
+  const combo = comboFromEvent(e);
+  if (combo !== "Ctrl+A" && combo !== "Cmd+A") return;
+  if (!state.folder || state.tagModalOpen || state.aboutOpen || state.colorPicker) return;
+  e.preventDefault();
+  const filtered = getFiltered();
+  if (filtered.length === 0) return;
+  selectAllFiltered(filtered);
+  state.navCursor = state.selectAnchor;
+  render();
+});
+
+// Electron's default behavior for an unhandled drop is to navigate the whole
+// window to the dropped file — never wanted here. #grid-wrap's own
+// dragover/drop (see renderGridInto) already prevents this and imports;
+// this is the fallback for anywhere else in the window (rail, preview,
+// titlebar), where a drop should just do nothing rather than break the app.
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("drop", (e) => e.preventDefault());
 
 // Escape closes whichever modal is open (color picker first, since it's "inside"
 // the tag manager), mirroring the ✕/Cancel/Close affordances each already has.
@@ -1234,9 +1429,9 @@ function renderRailFooter() {
   if (s.state === "checking") {
     action = `<span class="bm-rail-update-row">${ICONS.refresh} Checking for updates…</span>`;
   } else if (s.state === "available") {
-    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-download">${ICONS.download} Download update ${s.version}</button>`;
+    action = `<button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm bm-btn-block" id="update-download">${ICONS.download} Download update ${s.version}</button>`;
   } else if (s.state === "available-manual") {
-    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-manual">${ICONS.download} Get update ${s.version}</button>`;
+    action = `<button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm bm-btn-block" id="update-manual">${ICONS.download} Get update ${s.version}</button>`;
   } else if (s.state === "downloading") {
     action = `<span class="bm-rail-update-row">${ICONS.download} Downloading… ${s.percent ?? 0}%</span>`;
   } else if (s.state === "downloaded") {
@@ -1278,6 +1473,7 @@ function renderRail() {
   const tags = getAllTags();
   const folderTree = state.folder ? buildFolderTree(state.files) : null;
   const untaggedCount = state.files.filter((f) => f.tags.length === 0).length;
+  const looseCount = state.files.filter((f) => f.dir === "").length;
   const rail = el(`
     <aside class="bm-rail">
       <div class="bm-rail-brand">
@@ -1300,9 +1496,13 @@ function renderRail() {
           state.folder
             ? `
         <div class="bm-rail-label">Folders</div>
-        <div class="bm-nav-item ${state.activeTags.size === 0 && !state.activeFolder && !state.untaggedOnly ? "active" : ""}" id="nav-all">
+        <div class="bm-nav-item ${state.activeTags.size === 0 && !state.activeFolder && !state.untaggedOnly && !state.looseOnly ? "active" : ""}" id="nav-all">
           <span class="bm-nav-name">${ICONS.folder}All files</span>
           <span class="bm-nav-count">${state.files.length}</span>
+        </div>
+        <div class="bm-nav-item dim ${state.looseOnly ? "active" : ""}" id="nav-loose">
+          <span class="bm-nav-name">Loose files</span>
+          <span class="bm-nav-count">${looseCount}</span>
         </div>
         ${
           folderTree.children.size > 0
@@ -1324,8 +1524,8 @@ function renderRail() {
               : tags
                   .map(([tag, count]) => {
                     return `
-              <div class="bm-tag-nav ${state.activeTags.has(tag) ? "active" : ""}" data-tag="${tag}">
-                <span class="bm-tag-nav-name">${tag}</span>
+              <div class="bm-tag-nav bm-tag-nav-pilled ${state.activeTags.has(tag) ? "active" : ""}" data-tag="${tag}">
+                <span class="bm-tag-nav-pill-wrap"><span class="bm-tag"${tagStyleAttr(tag)}>${tag}</span></span>
                 <span class="bm-nav-count">${count}</span>
               </div>`;
                   })
@@ -1344,7 +1544,13 @@ function renderRail() {
   const manageBtn = rail.querySelector("#manage-tags-btn");
   if (manageBtn) manageBtn.addEventListener("click", openTagManager);
   const navAll = rail.querySelector("#nav-all");
-  if (navAll) navAll.addEventListener("click", () => { state.activeTags = new Set(); state.activeFolder = null; state.untaggedOnly = false; render(); });
+  if (navAll) navAll.addEventListener("click", () => { state.activeTags = new Set(); state.activeFolder = null; state.untaggedOnly = false; state.looseOnly = false; render(); });
+  const navLoose = rail.querySelector("#nav-loose");
+  if (navLoose) navLoose.addEventListener("click", () => {
+    state.looseOnly = !state.looseOnly;
+    if (state.looseOnly) state.activeFolder = null; // mutually exclusive with browsing into a specific folder — same relationship activeFolder already has with untaggedOnly's sibling, activeTags
+    render();
+  });
   const navUntagged = rail.querySelector("#nav-untagged");
   if (navUntagged) navUntagged.addEventListener("click", () => {
     state.untaggedOnly = !state.untaggedOnly;
@@ -1355,6 +1561,7 @@ function renderRail() {
     elm.addEventListener("click", () => {
       const p = elm.dataset.folder;
       state.activeFolder = state.activeFolder === p ? null : p;
+      if (state.activeFolder) state.looseOnly = false;
       render();
     });
   });
@@ -1388,10 +1595,14 @@ function renderMain() {
         <div class="bm-field bm-toolbar-sort">
           <label class="bm-field-label" for="sort-select">Sort</label>
           <select class="bm-select" id="sort-select" ${state.folder ? "" : "disabled"}>
-            <option value="name" ${state.sortBy === "name" ? "selected" : ""}>Name (A–Z)</option>
-            <option value="date" ${state.sortBy === "date" ? "selected" : ""}>Newest first</option>
-            <option value="tag" ${state.sortBy === "tag" ? "selected" : ""}>Tag (A–Z)</option>
+            <option value="name" ${state.sortBy === "name" && state.sortDir === "asc" ? "selected" : ""}>Name (A–Z)</option>
+            <option value="date" ${state.sortBy === "date" && state.sortDir === "desc" ? "selected" : ""}>Newest first</option>
+            <option value="tag" ${state.sortBy === "tag" && state.sortDir === "asc" ? "selected" : ""}>Tag (A–Z)</option>
           </select>
+        </div>
+        <div class="bm-view-toggle bm-toolbar-view" role="group" aria-label="View">
+          <button class="bm-view-toggle-btn ${state.viewMode === "grid" ? "active" : ""}" id="view-grid-btn" title="Thumbnail view" ${state.folder ? "" : "disabled"}>${ICONS.grid}</button>
+          <button class="bm-view-toggle-btn ${state.viewMode === "list" ? "active" : ""}" id="view-list-btn" title="List view" ${state.folder ? "" : "disabled"}>${ICONS.list}</button>
         </div>
         <button class="bm-btn bm-btn-ghost bm-btn-sm bm-toolbar-undo" id="undo-btn" ${undoStack.length === 0 ? "disabled" : ""}
           title="${undoStack.length > 0 ? `Undo: ${undoStack[undoStack.length - 1].label} (Ctrl+Z)` : "Nothing to undo"}">
@@ -1402,6 +1613,11 @@ function renderMain() {
         ${
           state.activeFolder
             ? `<div class="bm-active-filter">${ICONS.folder} ${state.activeFolder} <button id="clear-folder">${ICONS.x}</button></div>`
+            : ""
+        }
+        ${
+          state.looseOnly
+            ? `<div class="bm-active-filter">${ICONS.folder} Loose files <button id="clear-loose">${ICONS.x}</button></div>`
             : ""
         }
         ${
@@ -1432,14 +1648,28 @@ function renderMain() {
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
   main.querySelector("#sort-select").addEventListener("change", (e) => {
-    state.sortBy = e.target.value;
+    setSortBy(e.target.value); // dropdown always names a different column than whatever's active, so this always takes the "switch" branch (that column's natural default direction) — never the toggle branch
     const nowFiltered = getFiltered();
     renderRuleRowInto(main, nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
+  main.querySelector("#view-grid-btn").addEventListener("click", () => {
+    if (state.viewMode === "grid") return;
+    state.viewMode = "grid";
+    saveViewMode("grid");
+    render();
+  });
+  main.querySelector("#view-list-btn").addEventListener("click", () => {
+    if (state.viewMode === "list") return;
+    state.viewMode = "list";
+    saveViewMode("list");
+    render();
+  });
   main.querySelector("#undo-btn").addEventListener("click", performUndo);
   const clearFolderBtn = main.querySelector("#clear-folder");
   if (clearFolderBtn) clearFolderBtn.addEventListener("click", () => { state.activeFolder = null; render(); });
+  const clearLooseBtn = main.querySelector("#clear-loose");
+  if (clearLooseBtn) clearLooseBtn.addEventListener("click", () => { state.looseOnly = false; render(); });
   const clearUntaggedBtn = main.querySelector("#clear-untagged");
   if (clearUntaggedBtn) clearUntaggedBtn.addEventListener("click", () => { state.untaggedOnly = false; render(); });
   main.querySelectorAll(".bm-clear-tag-btn").forEach((btn) => {
@@ -1449,6 +1679,15 @@ function renderMain() {
   renderRuleRowInto(main, filtered);
   renderGridInto(main.querySelector("#grid-wrap"), filtered);
   return main;
+}
+
+// Selects every file in `filtered` (the current search/sort/tag/folder
+// view) — shared by the rule row's "Select all" checkbox and the Ctrl+A
+// shortcut below. Caller still owns render()/navCursor, matching every
+// other selection helper in this file.
+function selectAllFiltered(filtered) {
+  filtered.forEach((f) => state.selected.add(f.path));
+  state.selectAnchor = filtered.length > 0 ? filtered[filtered.length - 1].path : null;
 }
 
 // The "Select all N / N FILES · N FOLDERS" rule row above the grid. Rendered
@@ -1471,8 +1710,7 @@ function renderRuleRowInto(main, filtered) {
   cb.indeterminate = selectedInFiltered > 0 && !allFilteredSelected;
   cb.onchange = () => {
     if (cb.checked) {
-      filtered.forEach((f) => state.selected.add(f.path));
-      state.selectAnchor = filtered.length > 0 ? filtered[filtered.length - 1].path : null;
+      selectAllFiltered(filtered);
     } else {
       filtered.forEach((f) => state.selected.delete(f.path));
     }
@@ -1498,6 +1736,36 @@ function renderGridInto(container, filtered) {
     return;
   }
 
+  // ---- Drag-and-drop import from the OS file explorer (see importDroppedFiles) ----
+  // Wired here, before the empty/no-results branch below, so dropping into a
+  // freshly-opened or filtered-to-nothing folder still works — not just a
+  // populated grid. Single-slot assignment (not addEventListener) for the
+  // same reason container.onclick below is: `container` (#grid-wrap) is
+  // reused across partial re-renders, and stacking a new listener on every
+  // keystroke would run the import multiple times per drop.
+  let dragDepth = 0; // dragenter/dragleave fire once per child boundary crossed, not just the container's own edge — a counter is what tells "still inside" apart from "actually left".
+  container.ondragenter = (e) => {
+    e.preventDefault();
+    dragDepth++;
+    container.classList.add("drag-over");
+  };
+  container.ondragover = (e) => e.preventDefault(); // required for ondrop to fire at all
+  container.ondragleave = () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) container.classList.remove("drag-over");
+  };
+  container.ondrop = (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    container.classList.remove("drag-over");
+    const files = [...e.dataTransfer.files];
+    if (files.length === 0) return; // a non-file drag (text, a link, …) — nothing to import
+    // webUtils.getPathForFile (exposed via preload) is synchronous — a browser
+    // File object carries no filesystem path of its own to read directly.
+    const absPaths = files.map((f) => window.api.getPathForFile(f)).filter(Boolean);
+    importDroppedFiles(absPaths);
+  };
+
   if (filtered.length === 0) {
     container.appendChild(
       el(`
@@ -1515,68 +1783,19 @@ function renderGridInto(container, filtered) {
     return;
   }
 
-  const grid = el(`<div class="bm-grid"></div>`);
+  const isList = state.viewMode === "list";
+  // Column widths live as CSS custom properties on #grid-wrap itself (see
+  // .bm-list-header/.bm-list-row's shared grid-template-columns in
+  // styles.css) — inherited by both the header and every row below it, so a
+  // live resize drag only ever has to touch this one element, not each row.
+  applyListColWidths(container);
+  if (isList) container.appendChild(renderListHeader());
+
+  const grid = el(`<div class="bm-grid ${isList ? "bm-grid-list" : ""}"></div>`);
   filtered.forEach((f) => {
     const isSelected = state.selected.has(f.path);
-    const card = el(`
-      <div class="bm-card ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
-        <div class="bm-card-thumb">
-          <div class="bm-card-kind">${extLabel(f.ext)}</div>
-          ${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}
-          <button class="bm-card-open" data-open title="Open file">${ICONS.open}</button>
-        </div>
-        <div class="bm-card-body">
-          <div class="bm-card-name">${f.name}</div>
-          <div class="bm-card-meta">${formatSize(f.size)} · ${formatDate(f.mtime)}</div>
-          ${f.dir ? `<div class="bm-card-dir" title="${f.dir.replace(/"/g, "&quot;")}">${ICONS.folder} ${f.dir}</div>` : ""}
-          ${
-            f.tags.length > 0
-              ? `<div class="bm-card-tags">
-                  ${f.tags
-                    .slice(0, 3)
-                    .map((t) => `<span class="bm-tag"${tagStyleAttr(t)}>${t}</span>`)
-                    .join("")}
-                  ${f.tags.length > 3 ? `<span class="bm-tag-more">+${f.tags.length - 3}</span>` : ""}
-                </div>`
-              : ""
-          }
-        </div>
-      </div>
-    `);
-    // File-explorer-style click selection: a plain click selects just this
-    // file; Ctrl/Cmd-click toggles it into/out of the selection without
-    // touching the rest; Shift-click selects the contiguous range between the
-    // last plain/ctrl-clicked file (the anchor) and this one, in the grid's
-    // current sort order.
-    card.addEventListener("click", (e) => {
-      if (e.shiftKey && state.selectAnchor) {
-        const anchorIdx = filtered.findIndex((x) => x.path === state.selectAnchor);
-        const clickIdx = filtered.findIndex((x) => x.path === f.path);
-        if (anchorIdx === -1 || clickIdx === -1) {
-          state.selected = new Set([f.path]);
-          state.selectAnchor = f.path;
-        } else {
-          const [from, to] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
-          state.selected = new Set(filtered.slice(from, to + 1).map((x) => x.path));
-        }
-      } else if (e.ctrlKey || e.metaKey) {
-        if (state.selected.has(f.path)) state.selected.delete(f.path);
-        else state.selected.add(f.path);
-        state.selectAnchor = f.path;
-      } else {
-        state.selected = new Set([f.path]);
-        state.selectAnchor = f.path;
-      }
-      // Whatever the click did to the selection, the clicked card becomes the
-      // keyboard nav cursor so a following arrow key continues from here.
-      state.navCursor = f.path;
-      render();
-    });
-    card.addEventListener("dblclick", () => openFile(f.path));
-    card.querySelector("[data-open]").addEventListener("click", (e) => {
-      e.stopPropagation();
-      openFile(f.path);
-    });
+    const card = isList ? buildListRow(f, isSelected) : buildGridCard(f, isSelected);
+    wireFileItem(card, f, filtered);
     grid.appendChild(card);
   });
   // Clicking empty space within the grid (not on a card) clears the
@@ -1584,6 +1803,9 @@ function renderGridInto(container, filtered) {
   // `container` (#grid-wrap) is reused across partial re-renders — e.g. every
   // search keystroke — so this is assigned via .onclick (a single slot) rather
   // than addEventListener, which would otherwise stack a new listener each time.
+  // (The list header is a sibling of `grid`, not inside it, so clicking a
+  // header cell never satisfies this check — it's handled by its own sort/
+  // resize listeners instead.)
   container.onclick = (e) => {
     if (e.target === container || e.target === grid) {
       state.selected = new Set();
@@ -1593,6 +1815,189 @@ function renderGridInto(container, filtered) {
     }
   };
   container.appendChild(grid);
+}
+
+function applyListColWidths(container) {
+  for (const [key, val] of Object.entries(state.listColWidths)) {
+    container.style.setProperty(`--col-${key}`, `${val}px`);
+  }
+}
+
+// List-view column header: click a column to sort by it (click again to flip
+// direction — see setSortBy); drag the handle on a resizable column's right
+// edge to resize it. Name has no handle of its own — it's the flexible
+// remainder (minmax(_, 1fr) in styles.css), so it just gives/takes space as
+// its neighbors are resized, the same way Explorer's list view behaves.
+function renderListHeader() {
+  const cols = [
+    { key: "name", label: "Name" },
+    { key: "dir", label: "Folder", resize: "dir" },
+    { key: "tag", label: "Tags", resize: "tags" },
+    { key: "size", label: "Size", resize: "size" },
+    { key: "date", label: "Date", resize: "date" },
+  ];
+  const header = el(`
+    <div class="bm-list-header">
+      <div class="bm-list-header-spacer"></div>
+      ${cols
+        .map(
+          (c) => `
+        <button class="bm-list-header-sort ${state.sortBy === c.key ? "active" : ""}" data-sort="${c.key}">
+          <span>${c.label}</span>
+          ${state.sortBy === c.key ? (state.sortDir === "desc" ? ICONS.sortDesc : ICONS.sortAsc) : ""}
+          ${c.resize ? `<span class="bm-col-resize" data-col="${c.resize}" title="Drag to resize"></span>` : ""}
+        </button>`
+        )
+        .join("")}
+      <div class="bm-list-header-spacer"></div>
+    </div>
+  `);
+  header.querySelectorAll("[data-sort]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setSortBy(btn.dataset.sort);
+      render();
+    });
+  });
+  header.querySelectorAll(".bm-col-resize").forEach((handle) => {
+    // Both events matter: mousedown starts the drag itself; click (fired on
+    // mouseup, after the drag) must not also reach the parent button's sort
+    // click handler — without this every resize would also flip the sort.
+    handle.addEventListener("click", (e) => e.stopPropagation());
+    handle.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      startColumnResize(e, handle.dataset.col);
+    });
+  });
+  return header;
+}
+
+// Live-resizes one column by writing straight to the --col-<key> custom
+// property on #grid-wrap (see applyListColWidths) on every mousemove — no
+// render() during the drag, so it stays smooth regardless of file count.
+// Clamped so the row can never overflow #grid-wrap: Name (the flexible
+// column) is guaranteed at least NAME_MIN, and the dragged column can't grow
+// past whatever room that leaves once the other resizable columns' current
+// widths are accounted for.
+function startColumnResize(e, col) {
+  const gridWrap = document.getElementById("grid-wrap");
+  if (!gridWrap) return;
+  const MIN = 50;
+  const NAME_MIN = 80;
+  const GRID_WRAP_PADDING = 64; // var(--space-6) on each side, per .bm-grid-wrap in styles.css
+  const startX = e.clientX;
+  const startWidth = state.listColWidths[col];
+  const otherColsTotal = Object.entries(state.listColWidths)
+    .filter(([k]) => k !== col)
+    .reduce((sum, [, w]) => sum + w, 0);
+  const available = gridWrap.clientWidth - GRID_WRAP_PADDING - 28 /* thumb */ - 24 /* open */ - NAME_MIN;
+  const maxWidth = Math.max(MIN, available - otherColsTotal);
+
+  let liveWidth = startWidth;
+  beginPointerDrag((ev) => {
+    liveWidth = clamp(MIN, maxWidth, startWidth + (ev.clientX - startX));
+    gridWrap.style.setProperty(`--col-${col}`, `${liveWidth}px`);
+  });
+  // Runs after beginPointerDrag's own mouseup teardown (added first, so it
+  // fires first) — by then liveWidth already holds the drag's final value.
+  const commit = () => {
+    state.listColWidths[col] = liveWidth;
+    saveListColWidths(state.listColWidths);
+    document.removeEventListener("mouseup", commit);
+  };
+  document.addEventListener("mouseup", commit);
+}
+
+// Thumbnail-view card: big preview plate, name/meta/dir/tags stacked below.
+function buildGridCard(f, isSelected) {
+  return el(`
+    <div class="bm-card ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
+      <div class="bm-card-thumb">
+        <div class="bm-card-kind">${extLabel(f.ext)}</div>
+        ${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}
+        <button class="bm-card-open" data-open title="Open file">${ICONS.open}</button>
+      </div>
+      <div class="bm-card-body">
+        <div class="bm-card-name">${f.name}</div>
+        <div class="bm-card-meta">${formatSize(f.size)} · ${formatDate(f.mtime)}</div>
+        ${f.dir ? `<div class="bm-card-dir" title="${f.dir.replace(/"/g, "&quot;")}">${ICONS.folder} ${f.dir}</div>` : ""}
+        ${
+          f.tags.length > 0
+            ? `<div class="bm-card-tags">
+                ${f.tags
+                  .slice(0, 3)
+                  .map((t) => `<span class="bm-tag"${tagStyleAttr(t)}>${t}</span>`)
+                  .join("")}
+                ${f.tags.length > 3 ? `<span class="bm-tag-more">+${f.tags.length - 3}</span>` : ""}
+              </div>`
+            : ""
+        }
+      </div>
+    </div>
+  `);
+}
+
+// List-view row: one file per line — small thumb, name, folder, tags and
+// size/date as aligned columns, for scanning many files at once. Still a
+// `.bm-card` (same class moveGridRow/scrollCardIntoView query for keyboard
+// nav) so selection and arrow-key navigation need no view-mode branching —
+// each row is its own visual row already, which is exactly what a list is.
+function buildListRow(f, isSelected) {
+  return el(`
+    <div class="bm-card bm-list-row ${isSelected ? "selected" : ""}" data-path="${f.path.replace(/"/g, "&quot;")}">
+      <div class="bm-list-thumb">${f.ext === ".pdf" ? ICONS.filetext : `<img src="${f.url}" />`}</div>
+      <div class="bm-list-name" title="${f.name.replace(/"/g, "&quot;")}">${f.name}</div>
+      <div class="bm-list-dir" title="${(f.dir || "").replace(/"/g, "&quot;")}">${f.dir ? `${ICONS.folder} ${f.dir}` : ""}</div>
+      <div class="bm-list-tags">
+        ${f.tags
+          .slice(0, 2)
+          .map((t) => `<span class="bm-tag"${tagStyleAttr(t)}>${t}</span>`)
+          .join("")}
+        ${f.tags.length > 2 ? `<span class="bm-tag-more">+${f.tags.length - 2}</span>` : ""}
+      </div>
+      <div class="bm-list-size">${formatSize(f.size)}</div>
+      <div class="bm-list-date">${formatDate(f.mtime)}</div>
+      <button class="bm-list-open" data-open title="Open file">${ICONS.open}</button>
+    </div>
+  `);
+}
+
+// Shared selection/open wiring for both a grid card and a list row.
+function wireFileItem(card, f, filtered) {
+  // File-explorer-style click selection: a plain click selects just this
+  // file; Ctrl/Cmd-click toggles it into/out of the selection without
+  // touching the rest; Shift-click selects the contiguous range between the
+  // last plain/ctrl-clicked file (the anchor) and this one, in the grid's
+  // current sort order.
+  card.addEventListener("click", (e) => {
+    if (e.shiftKey && state.selectAnchor) {
+      const anchorIdx = filtered.findIndex((x) => x.path === state.selectAnchor);
+      const clickIdx = filtered.findIndex((x) => x.path === f.path);
+      if (anchorIdx === -1 || clickIdx === -1) {
+        state.selected = new Set([f.path]);
+        state.selectAnchor = f.path;
+      } else {
+        const [from, to] = anchorIdx < clickIdx ? [anchorIdx, clickIdx] : [clickIdx, anchorIdx];
+        state.selected = new Set(filtered.slice(from, to + 1).map((x) => x.path));
+      }
+    } else if (e.ctrlKey || e.metaKey) {
+      if (state.selected.has(f.path)) state.selected.delete(f.path);
+      else state.selected.add(f.path);
+      state.selectAnchor = f.path;
+    } else {
+      state.selected = new Set([f.path]);
+      state.selectAnchor = f.path;
+    }
+    // Whatever the click did to the selection, the clicked card becomes the
+    // keyboard nav cursor so a following arrow key continues from here.
+    state.navCursor = f.path;
+    render();
+  });
+  card.addEventListener("dblclick", () => openFile(f.path));
+  card.querySelector("[data-open]").addEventListener("click", (e) => {
+    e.stopPropagation();
+    openFile(f.path);
+  });
 }
 
 // The preview pane is now a permanent fixture of the layout (see render()),
@@ -1606,16 +2011,94 @@ function renderPreview() {
   return renderPreviewMulti(files);
 }
 
+// Nothing-selected state. With no folder open there's nothing to report on,
+// so it stays the plain centered message; with a folder open it becomes a
+// small dashboard instead — a highlighted reminder of what to do, general
+// stats about the whole open folder (not just the current search/filter),
+// and a feed of recent actions built straight off the undo stack (see
+// pushUndo) — every mutating action already funnels through there with a
+// human-readable label, which is exactly what a recent-activity list needs.
 function renderPreviewEmpty() {
-  return el(`
+  if (!state.folder) {
+    return el(`
+      <aside class="bm-preview bm-preview-empty">
+        <div class="bm-preview-empty-inner">
+          <div class="bm-preview-empty-icon">${ICONS.emptyFolder}</div>
+          <div class="bm-preview-empty-title">Nothing selected</div>
+          <div class="bm-preview-empty-hint">Choose a folder to get started.</div>
+        </div>
+      </aside>
+    `);
+  }
+
+  // Scoped to state.activeFolder — the folder currently selected in the
+  // rail's Folders list, or every file/folder in the catalog when it's null
+  // ("All files"). Recursive, same as getFiltered's own folder match, so a
+  // parent folder's stats include its subfolders' files too. Deliberately
+  // NOT further narrowed by search/tag filters (unlike getFiltered) — those
+  // are transient view filters, not something "This folder" should describe.
+  const inScope = (dir) => !state.activeFolder || dir === state.activeFolder || dir.startsWith(state.activeFolder + "/");
+  const filesInFolder = state.files.filter((f) => inScope(f.dir));
+  const foldersInFolder = state.activeFolder
+    ? state.allFolders.filter((f) => f.startsWith(state.activeFolder + "/"))
+    : state.allFolders;
+  const totalSize = filesInFolder.reduce((sum, f) => sum + f.size, 0);
+  const taggedCount = filesInFolder.filter((f) => f.tags.length > 0).length;
+  const untaggedCount = filesInFolder.filter((f) => f.tags.length === 0).length;
+  // Direct children of the selected folder only — not sorted into any of its
+  // subfolders. The complement to filesInFolder above, which is recursive.
+  const looseCount = filesInFolder.filter((f) => f.dir === (state.activeFolder || "")).length;
+  const recent = [...undoStack].reverse().slice(0, 8);
+
+  const panel = el(`
     <aside class="bm-preview bm-preview-empty">
-      <div class="bm-preview-empty-inner">
-        <div class="bm-preview-empty-icon">${ICONS.emptyFolder}</div>
+      <div class="bm-preview-empty-highlight">
         <div class="bm-preview-empty-title">Nothing selected</div>
         <div class="bm-preview-empty-hint">Click a file to preview it. Ctrl-click or Shift-click to select more than one.</div>
       </div>
+      <div class="bm-preview-scroll">
+        <div>
+          <div class="bm-section-label">This folder</div>
+          <div class="bm-stat-list">
+            <div class="bm-stat-row"><span>Files</span><span class="bm-stat-value">${filesInFolder.length}</span></div>
+            <div class="bm-stat-row"><span>Loose files</span><span class="bm-stat-value">${looseCount}</span></div>
+            <div class="bm-stat-row"><span>Folders</span><span class="bm-stat-value">${foldersInFolder.length}</span></div>
+            <div class="bm-stat-row"><span>Total size</span><span class="bm-stat-value">${formatSize(totalSize)}</span></div>
+            <div class="bm-stat-row"><span>Tagged</span><span class="bm-stat-value">${taggedCount}</span></div>
+            <div class="bm-stat-row"><span>Untagged</span><span class="bm-stat-value">${untaggedCount}</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="bm-section-label">Recent</div>
+          ${
+            recent.length === 0
+              ? `<span class="bm-tag-hint">No recent activity</span>`
+              : `<div class="bm-recent-list">
+                  ${recent
+                    .map(
+                      (a) => `
+                    <div class="bm-recent-item">
+                      <div class="bm-recent-item-text">
+                        <div class="bm-recent-label">${a.label}</div>
+                        <div class="bm-recent-time">${formatRelativeTime(a.time)}</div>
+                      </div>
+                      <button class="bm-recent-undo-btn" data-undo-id="${a.id}" title="Undo: ${a.label}">${ICONS.undo}</button>
+                    </div>`
+                    )
+                    .join("")}
+                </div>`
+          }
+        </div>
+      </div>
     </aside>
   `);
+  panel.querySelectorAll(".bm-recent-undo-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      undoActionById(Number(btn.dataset.undoId));
+    });
+  });
+  return panel;
 }
 
 // The Location field (move-destination select + Autorename button) is shared
@@ -1669,7 +2152,7 @@ function renderPreviewSingle(file) {
           ${extLabel(file.ext)} · ${formatSize(file.size)} · ${formatDate(file.mtime)}${file.dir ? ` · ${file.dir}` : ""}
         </div>
         <div class="bm-preview-delete-row">
-          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="delete-btn">${ICONS.trash} Delete file</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-maroon bm-btn-sm" id="delete-btn">${ICONS.trash} Delete file</button>
         </div>
       </div>
       <div class="bm-preview-plate" id="preview-frame-wrap" title="Double-click to open in default app">
@@ -1795,7 +2278,7 @@ function renderPreviewMulti(files) {
         </div>
         <div class="bm-preview-meta">${formatSize(totalSize)} total</div>
         <div class="bm-preview-delete-row">
-          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="delete-btn">${ICONS.trash} Delete ${files.length} files</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-maroon bm-btn-sm" id="delete-btn">${ICONS.trash} Delete ${files.length} files</button>
         </div>
       </div>
       <div class="bm-preview-multi-grid" id="preview-multi-grid">
@@ -1902,7 +2385,7 @@ function renderTagManager() {
                   const recording = state.recordingShortcutIdx === i;
                   return `
                 <div class="bm-tagrow" data-idx="${i}">
-                  <button class="bm-tagrow-swatch" data-idx="${i}" style="background:${t.color || "#006E47"}" title="Tag color"></button>
+                  <button class="bm-tagrow-swatch" data-idx="${i}" style="background:${t.color || "#006D46"}" title="Tag color"></button>
                   <input class="bm-input bm-tagrow-name" data-idx="${i}" placeholder="Tag name" value="${t.name.replace(/"/g, "&quot;")}" />
                   <button class="bm-shortcut-btn ${recording ? "recording" : ""}" data-idx="${i}">
                     ${recording ? "Press a key…" : t.shortcut || "Set shortcut"}
@@ -1918,7 +2401,7 @@ function renderTagManager() {
         </div>
         <div class="bm-modal-footer">
           <button class="bm-btn bm-btn-ghost bm-btn-sm" id="tag-modal-cancel">Cancel</button>
-          <button class="bm-btn bm-btn-primary bm-btn-sm" id="tag-modal-save">Save changes</button>
+          <button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm" id="tag-modal-save">Save changes</button>
         </div>
       </div>
     </div>
