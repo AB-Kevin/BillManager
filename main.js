@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const { pathToFileURL } = require("url");
-const { execFileSync } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
 const { exiftool } = require("exiftool-vendored");
 const { autoUpdater } = require("electron-updater");
 
@@ -102,7 +102,9 @@ autoUpdater.forceDevUpdateConfig = true;
 // in-app, we hand the user off to the GitHub release page to grab the new
 // .dmg themselves.
 const IS_MAC = process.platform === "darwin";
-const REPO_URL = "https://github.com/AB-Kevin/BillManager";
+const REPO_OWNER = "AB-Kevin";
+const REPO_NAME = "BillManager";
+const REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
 const RELEASES_URL = `${REPO_URL}/releases/latest`;
 
 function sendUpdateStatus(status) {
@@ -163,6 +165,93 @@ ipcMain.handle("open-repo-page", () => {
 });
 
 ipcMain.handle("get-app-version", () => app.getVersion());
+
+// --- Roll back to previous version ------------------------------------------
+// electron-updater only knows how to move forward to the newest release on the
+// feed, so "roll back" is done by hand against the GitHub Releases API:
+// find whichever release GitHub currently marks "latest", take the one
+// published right before it, then (Windows) download and launch its
+// installer, or (Mac, same ad-hoc-signing limitation as the normal update
+// path above) hand the user that release's page to install by hand.
+function sendRollbackStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("rollback-status", status);
+  }
+}
+
+async function fetchGithubJson(url) {
+  const res = await fetch(url, {
+    headers: { Accept: "application/vnd.github+json", "User-Agent": "BillManager" },
+  });
+  if (!res.ok) throw new Error(`GitHub API error ${res.status} for ${url}`);
+  return res.json();
+}
+
+async function findPreviousRelease() {
+  const latest = await fetchGithubJson(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`);
+  const all = await fetchGithubJson(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases`);
+  const idx = all.findIndex((r) => r.id === latest.id);
+  if (idx === -1 || idx + 1 >= all.length) {
+    throw new Error("Couldn't find a release before the current latest version.");
+  }
+  return all[idx + 1];
+}
+
+async function downloadToFile(url, destPath, onProgress) {
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
+  const total = Number(res.headers.get("content-length")) || 0;
+  let received = 0;
+  const out = fs.createWriteStream(destPath);
+  const reader = res.body.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out.write(value);
+      received += value.length;
+      if (total) onProgress?.(Math.round((received / total) * 100));
+    }
+  } finally {
+    await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+  }
+}
+
+ipcMain.handle("rollback-to-previous-version", async () => {
+  try {
+    sendRollbackStatus({ state: "checking" });
+    const previous = await findPreviousRelease();
+    const version = previous.tag_name.replace(/^v/, "");
+
+    if (IS_MAC) {
+      shell.openExternal(previous.html_url);
+      sendRollbackStatus({ state: "manual", version });
+      return;
+    }
+
+    const asset = previous.assets.find(
+      (a) => a.name.toLowerCase().endsWith(".exe") && !a.name.toLowerCase().endsWith(".blockmap")
+    );
+    if (!asset) throw new Error(`No Windows installer found on release ${previous.tag_name}.`);
+
+    sendRollbackStatus({ state: "downloading", version, percent: 0 });
+    const destDir = path.join(app.getPath("temp"), "billmanager-rollback");
+    fs.mkdirSync(destDir, { recursive: true });
+    const destPath = path.join(destDir, asset.name);
+    await downloadToFile(asset.browser_download_url, destPath, (percent) => {
+      sendRollbackStatus({ state: "downloading", version, percent });
+    });
+
+    sendRollbackStatus({ state: "installing", version });
+    // Same handoff as autoUpdater.quitAndInstall() above: launch the (older)
+    // installer detached, then quit so it's free to replace files this
+    // process is currently holding open.
+    spawn(destPath, [], { detached: true, stdio: "ignore" }).unref();
+    app.quit();
+  } catch (err) {
+    sendRollbackStatus({ state: "error", message: err?.message || String(err) });
+  }
+});
 
 // Tags and comments are stored as native file metadata (no sidecar file):
 //   - PDFs: the document's own Info dictionary (Keywords / Subject).
@@ -275,6 +364,36 @@ ipcMain.handle("set-last-folder", async (event, folder) => {
   fs.writeFileSync(LAST_FOLDER_FILE, JSON.stringify({ folder }), "utf8");
   return true;
 });
+
+// Small per-device settings that aren't tied to any one catalog folder — the
+// name signed onto new comments (see commentAttributionLine in the renderer)
+// and the chosen theme (light/dark/midnight — see applyTheme). Kept in its
+// own file rather than folded into LAST_FOLDER_FILE above since that one is
+// conceptually unrelated.
+const SETTINGS_FILE = path.join(app.getPath("userData"), "settings.json");
+
+function readSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeSettings(patch) {
+  const settings = { ...readSettings(), ...patch };
+  fs.mkdirSync(path.dirname(SETTINGS_FILE), { recursive: true });
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings), "utf8");
+  return true;
+}
+
+ipcMain.handle("get-commenter-name", () => readSettings().commenterName || null);
+
+ipcMain.handle("set-commenter-name", (event, name) => writeSettings({ commenterName: name }));
+
+ipcMain.handle("get-theme", () => readSettings().theme || null);
+
+ipcMain.handle("set-theme", (event, theme) => writeSettings({ theme }));
 
 // Recursively collects accepted files under `root`, descending into subfolders.
 // Dotfiles/dotfolders (e.g. a leftover legacy ".catalog-tags.json", ".git") are

@@ -4,7 +4,20 @@
    source rather than eyeballing new values. v1.1 corrected the brand green
    (was #006E47, a documented v1.0 error) and added Brotherhood Maroon as a
    narrow secondary color: solid CTAs only, never structural (headings,
-   rules, rails, links stay green). */
+   rules, rails, links stay green).
+
+   Theming: everything below is consumed through custom properties rather
+   than literal colors, specifically so [data-theme="dark"] / [data-theme=
+   "midnight"] (set on <html> by applyTheme() in renderer.js) can re-point a
+   handful of them and reskin the whole app:
+     --surface-page/--surface-card/--surface-card-alt — what's behind things:
+       the window itself, a "raised" card/modal/input, and a recessed/alt
+       tint (thumbnail placeholders, hover rows).
+     --accent-text/--on-accent/--on-rail/--rail-active-bg — the SAME
+       green-branded interactions (links, active states, filled buttons,
+       rail text) paired with whatever's correct for the surface they're
+       currently sitting on. See the Dark/Midnight blocks for how each uses
+       them differently. */
 :root {
   /* Color */
   --green-700: #005537;
@@ -22,16 +35,26 @@
   --gray-100: #ededee;
   --white: #ffffff;
 
+  /* Accent as used away from the rail — brand green by default, re-pointed
+     per theme so text/borders/focus rings/selection stay legible once the
+     surface behind them is no longer white. */
+  --accent-text: var(--green-500);
+  --on-accent: var(--white); /* text/icon color for a solid accent-filled control */
+  --on-rail: var(--white); /* text/icon color for anything on --surface-rail or the About band */
+  --rail-active-bg: var(--white); /* solid highlight fill for the active rail nav item / tag plate */
+  --scrollbar-thumb: var(--gray-200);
+
   --text-body: var(--gray-900);
   --text-muted: var(--gray-600);
-  --text-heading: var(--green-500);
+  --text-heading: var(--accent-text);
   --text-caption: var(--gray-600);
   --border-hairline: var(--gray-200);
-  --border-rule: var(--green-500);
+  --border-rule: var(--accent-text);
   --border-rule-soft: var(--green-300);
-  --border-reversed: rgba(255, 255, 255, 0.7);
-  --focus-ring: var(--green-500);
+  --border-reversed: color-mix(in srgb, var(--on-rail) 70%, transparent);
+  --focus-ring: var(--accent-text);
   --surface-page: var(--white);
+  --surface-card: var(--white); /* cards, modals, inputs, popovers, comment boxes — "raised" surfaces */
   --surface-card-alt: var(--green-050);
   --surface-rail: var(--green-500);
   --brand-maroon: var(--maroon-500);
@@ -63,6 +86,64 @@
   --motion-base: 200ms ease-out;
 }
 
+/* ---- Dark ----
+   "Light mode with the green rail, gray main window": the rail, and every
+   filled accent button/toggle, stay exactly as :root defines them (still
+   brand green + white text) — only the page/card surfaces and body text
+   move to a dark neutral scale. --accent-text lightens, and --green-100/
+   -050 (the pale-tint role paired with it — hover fills, tag/chip defaults,
+   the empty-state highlight card) go dark-tinted to match, so every place
+   that already pairs "accent text on a light tint" keeps working once that
+   tint itself is dark instead of pale. */
+[data-theme="dark"] {
+  --surface-page: #1b1c1e;
+  --surface-card: #232527;
+  --surface-card-alt: #2c2e31;
+  --border-hairline: #38393c;
+  --scrollbar-thumb: #48494c;
+  --text-body: #ececec;
+  --text-muted: #a8a9ab;
+  --text-caption: #a8a9ab;
+  --accent-text: #4cc38a;
+  --green-100: #24352d;
+  --green-050: #1e2b25;
+  --overlay-scrim: rgba(0, 0, 0, 0.6);
+}
+
+/* ---- Midnight ----
+   Entirely gray, rail a shade darker than the main window, with brand green
+   itself swapped for a mint scale — since --green-500/600/700/300/100/050
+   are what every accent-colored button, tag default, link, active state,
+   and focus ring already draws from, overriding just those six values is
+   what turns the whole app mint-accented in one move. Rail/About text reads
+   mint too (--on-rail), and filled buttons flip to dark text (--on-accent)
+   since the new accent-500 is pale enough to need it. */
+[data-theme="midnight"] {
+  --green-700: #3fb98e;
+  --green-600: #57cda3;
+  --green-500: #6fe0b8;
+  --green-300: #4f7d6d;
+  --green-100: #2a3d38;
+  --green-050: #23332e;
+
+  --surface-rail: #1a1c1e;
+  --surface-page: #232527;
+  --surface-card: #2b2d30;
+  --surface-card-alt: #333537;
+  --border-hairline: #3c3e41;
+  --scrollbar-thumb: #4a4c4f;
+
+  --text-body: #e7e9e8;
+  --text-muted: #a3a6a5;
+  --text-caption: #a3a6a5;
+  --accent-text: var(--green-500);
+
+  --on-accent: #0d1f1a; /* dark text needed on the now-pale mint fills */
+  --on-rail: var(--green-500); /* rail/About text reads mint instead of white */
+  --rail-active-bg: #3a3d40; /* neutral gray highlight — no white pop in an all-gray theme */
+  --overlay-scrim: rgba(0, 0, 0, 0.65);
+}
+
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
@@ -74,7 +155,7 @@ body {
 }
 button, input, select, textarea { font-family: inherit; color: inherit; }
 button { cursor: pointer; }
-a { color: var(--green-500); text-decoration: none; border-bottom: 1px solid var(--green-300); }
+a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid var(--green-300); }
 a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
@@ -82,8 +163,8 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--white);
-  border: 1px solid var(--gray-200);
+  background: var(--surface-page);
+  border: 1px solid var(--border-hairline);
   box-shadow: var(--shadow-window);
   overflow: hidden;
   /* This is an app shell, not a document — click-drag is for selecting files
@@ -103,7 +184,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--white);
+  background: var(--surface-page);
   border-bottom: 1px solid var(--border-hairline);
   -webkit-app-region: drag;
 }
@@ -115,7 +196,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   border: none; background: none; color: var(--gray-600); padding: 0;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
-.bm-titlebar-btn:hover { background: var(--gray-100); }
+.bm-titlebar-btn:hover { background: var(--surface-card-alt); }
 .bm-titlebar-btn.bm-titlebar-close:hover { background: #c0392b; color: #fff; }
 
 /* ---- App body: rail / main / preview ---- */
@@ -132,7 +213,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--space-3); background: var(--surface-page);
 }
-.bm-loading-spinner svg { width: 28px; height: 28px; color: var(--green-500); animation: bm-spin 0.8s linear infinite; }
+.bm-loading-spinner svg { width: 28px; height: 28px; color: var(--accent-text); animation: bm-spin 0.8s linear infinite; }
 .bm-loading-text {
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
   text-transform: uppercase; color: var(--text-caption);
@@ -141,7 +222,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 /* ---- Rail ---- */
 .bm-rail {
   background: var(--surface-rail);
-  color: var(--white);
+  color: var(--on-rail);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -156,7 +237,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-rail-title { font-size: 22px; font-weight: 600; letter-spacing: var(--tracking-tight); }
 .bm-rail-sub {
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 80%, transparent);
 }
 .bm-rail-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
@@ -167,21 +248,21 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-rail-path-row { margin-top: var(--space-3); display: flex; gap: var(--space-2); align-items: flex-start; }
 .bm-rail-path {
   font-family: var(--font-condensed); font-size: 12px; line-height: 1.4;
-  color: rgba(255, 255, 255, 0.75); word-break: break-all; flex: 1;
+  color: color-mix(in srgb, var(--on-rail) 75%, transparent); word-break: break-all; flex: 1;
 }
-.bm-rail-hint { font-size: 12px; color: rgba(255, 255, 255, 0.75); margin-top: var(--space-3); line-height: 1.5; }
+.bm-rail-hint { font-size: 12px; color: color-mix(in srgb, var(--on-rail) 75%, transparent); margin-top: var(--space-3); line-height: 1.5; }
 .bm-refresh-btn {
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  background: none; border: none; cursor: pointer; color: rgba(255, 255, 255, 0.75); padding: 2px; border-radius: var(--radius-control);
+  background: none; border: none; cursor: pointer; color: color-mix(in srgb, var(--on-rail) 75%, transparent); padding: 2px; border-radius: var(--radius-control);
 }
-.bm-refresh-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.bm-refresh-btn:hover { color: var(--on-rail); background: color-mix(in srgb, var(--on-rail) 12%, transparent); }
 .bm-refresh-btn:disabled { cursor: default; }
 .bm-refresh-btn.spinning svg { animation: bm-spin 0.8s linear infinite; }
 @keyframes bm-spin { to { transform: rotate(360deg); } }
 
 .bm-rail-label {
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 70%, transparent);
   padding-bottom: var(--space-2);
 }
 .bm-rail-label-row {
@@ -190,54 +271,59 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-rail-label-row .bm-rail-label { padding-bottom: 0; }
 .bm-rail-link {
-  cursor: pointer; border-bottom: 1px solid var(--border-reversed); color: var(--white);
+  cursor: pointer; border-bottom: 1px solid var(--border-reversed); color: var(--on-rail);
   background: none; border-top: none; border-left: none; border-right: none; padding: 0;
   font-family: inherit; font-size: 12px;
 }
-.bm-rail-link:hover { border-bottom-color: #fff; }
+.bm-rail-link:hover { border-bottom-color: var(--on-rail); }
 
 .bm-nav-item {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
   padding: 9px var(--space-3); border-radius: var(--radius-control); font-size: 13px; cursor: pointer;
-  color: rgba(255, 255, 255, 0.92);
+  color: color-mix(in srgb, var(--on-rail) 92%, transparent);
 }
-.bm-nav-item:hover { background: rgba(255, 255, 255, 0.1); }
-.bm-nav-item.active { background: var(--white); color: var(--green-500); font-weight: 500; }
+.bm-nav-item:hover { background: color-mix(in srgb, var(--on-rail) 10%, transparent); }
+.bm-nav-item.active { background: var(--rail-active-bg); color: var(--accent-text); font-weight: 500; }
 /* Special/meta filter row (e.g. "Loose files") rather than a real folder —
    dimmed the same way .bm-tag-nav's "No tags" row is relative to real tags. */
-.bm-nav-item.dim { color: rgba(255, 255, 255, 0.7); }
-.bm-nav-item.dim.active { color: var(--green-500); } /* same cascade fix .bm-tag-nav.dim.active needed — .dim would otherwise win over .active's color, both being 2-class rules */
-.bm-nav-name { display: flex; align-items: center; gap: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-nav-item.dim { color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
+.bm-nav-item.dim.active { color: var(--accent-text); } /* same cascade fix .bm-tag-nav.dim.active needed — .dim would otherwise win over .active's color, both being 2-class rules */
+.bm-nav-name { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.bm-nav-name svg { flex-shrink: 0; }
+.bm-nav-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-nav-count { font-size: 12px; flex-shrink: 0; }
 .bm-folder-nav-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-bottom: var(--space-2); }
 
 .bm-tag-nav-list { display: flex; flex-direction: column; }
 .bm-tag-nav {
   display: flex; align-items: center; gap: var(--space-2); padding: 9px var(--space-3);
-  border-radius: var(--radius-control); font-size: 13px; cursor: pointer; color: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-control); font-size: 13px; cursor: pointer; color: color-mix(in srgb, var(--on-rail) 92%, transparent);
 }
-.bm-tag-nav:hover { background: rgba(255, 255, 255, 0.1); }
-.bm-tag-nav.active { background: var(--white); color: var(--green-500); font-weight: 500; }
-.bm-tag-nav.dim { color: rgba(255, 255, 255, 0.7); }
+.bm-tag-nav:hover { background: color-mix(in srgb, var(--on-rail) 10%, transparent); }
+.bm-tag-nav.active { background: var(--rail-active-bg); color: var(--accent-text); font-weight: 500; }
+.bm-tag-nav.dim { color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
 /* .dim and .active are both 2-class selectors, so .dim (defined later) was
    winning the cascade on "No tags" when it's active — near-white text on
    the white active background it inherits from the rule above, invisible.
    3 classes beats both, regardless of source order. */
-.bm-tag-nav.dim.active { color: var(--green-500); }
+.bm-tag-nav.dim.active { color: var(--accent-text); }
 .bm-tag-nav-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 /* Real tags render as their own colored .bm-tag pill (same component the
    file grid/list/preview use) rather than plain reversed text — the pill's
-   own tint is tuned for a white surface, so it sits on a small white plate
-   just big enough to hold it, not the folder-style full-width white fill
-   .bm-tag-nav.active uses (higher specificity than the plain .active rule
-   above, so it wins for pilled rows without touching the untagged/"No tags"
-   row, which has no pill and keeps that original treatment). */
+   own tint is tuned for a light plate, so it sits on a small light-plate
+   patch just big enough to hold it (--rail-active-bg — same fill the
+   folder-style full-width active row above uses, not literal white, so
+   Midnight's all-gray rail doesn't get a random white pop), not the
+   folder-style full-width fill .bm-tag-nav.active uses (higher specificity
+   than the plain .active rule above, so it wins for pilled rows without
+   touching the untagged/"No tags" row, which has no pill and keeps that
+   original treatment). */
 .bm-tag-nav-pilled { justify-content: space-between; }
-.bm-tag-nav-pill-wrap { display: inline-flex; min-width: 0; background: var(--white); border-radius: 999px; padding: 3px; }
+.bm-tag-nav-pill-wrap { display: inline-flex; min-width: 0; background: var(--rail-active-bg); border-radius: 999px; padding: 3px; }
 .bm-tag-nav-pill-wrap .bm-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-tag-nav.bm-tag-nav-pilled.active { background: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.92); font-weight: 400; }
-.bm-rail-empty { font-size: 12px; color: rgba(255, 255, 255, 0.7); padding: 4px var(--space-3); }
+.bm-tag-nav.bm-tag-nav-pilled.active { background: color-mix(in srgb, var(--on-rail) 18%, transparent); color: color-mix(in srgb, var(--on-rail) 92%, transparent); font-weight: 400; }
+.bm-rail-empty { font-size: 12px; color: color-mix(in srgb, var(--on-rail) 70%, transparent); padding: 4px var(--space-3); }
 
 .bm-rail-footer {
   margin-top: auto; padding-top: var(--space-4); border-top: 1px solid var(--border-reversed);
@@ -246,12 +332,13 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-rail-footer-row {
   display: flex; align-items: baseline; justify-content: space-between;
   font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 75%, transparent);
 }
-.bm-rail-update-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; color: rgba(255, 255, 255, 0.85); }
+.bm-rail-footer-links { display: flex; align-items: baseline; gap: var(--space-3); }
+.bm-rail-update-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); }
 .bm-rail-update-error { color: #ffb4a8; }
 .bm-rail-update-clickable { cursor: pointer; }
-.bm-rail-update-clickable:hover { color: #fff; }
+.bm-rail-update-clickable:hover { color: var(--on-rail); }
 
 /* ---- Buttons ---- */
 .bm-btn {
@@ -265,7 +352,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-btn-block { width: 100%; }
 .bm-btn-sm { height: 34px; padding: 7px 12px; font-size: 12.5px; }
 
-.bm-btn-primary { background: var(--green-500); color: var(--white); border-color: var(--green-500); }
+.bm-btn-primary { background: var(--green-500); color: var(--on-accent); border-color: var(--green-500); }
 .bm-btn-primary:hover:not(:disabled) { background: var(--green-600); }
 .bm-btn-primary:active:not(:disabled) { background: var(--green-700); }
 
@@ -273,12 +360,14 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
    CTAs (a form's submit button), never structural chrome. Only one solid
    button per view, and never a green solid next to a maroon solid — the
    manage-tags modal's "Save changes" button (#tag-modal-save in
-   renderer.js) is the one place this applies today. */
+   renderer.js) is the one place this applies today. Deliberately NOT
+   theme-dependent — a fixed secondary brand color, like a tag's own chosen
+   color, regardless of light/dark/midnight. */
 .bm-btn-primary.bm-btn-maroon { background: var(--maroon-500); border-color: var(--maroon-500); }
 .bm-btn-primary.bm-btn-maroon:hover:not(:disabled),
 .bm-btn-primary.bm-btn-maroon:active:not(:disabled) { background: var(--maroon-600); border-color: var(--maroon-600); }
 
-.bm-btn-secondary { background: var(--white); color: var(--green-500); border-color: var(--green-500); }
+.bm-btn-secondary { background: var(--surface-card); color: var(--accent-text); border-color: var(--accent-text); }
 .bm-btn-secondary:hover:not(:disabled) { background: var(--green-100); }
 
 /* No maroon tint token exists (deliberate, per the design system) — shade
@@ -287,14 +376,14 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-btn-secondary.bm-btn-maroon { color: var(--maroon-500); border-color: var(--maroon-500); }
 .bm-btn-secondary.bm-btn-maroon:hover:not(:disabled) { background: rgba(134, 72, 85, 0.08); }
 
-.bm-btn-ghost { background: none; color: var(--green-500); border-color: transparent; padding-left: 8px; padding-right: 8px; }
+.bm-btn-ghost { background: none; color: var(--accent-text); border-color: transparent; padding-left: 8px; padding-right: 8px; }
 .bm-btn-ghost:hover:not(:disabled) { background: var(--green-100); }
 
-.bm-btn-danger { background: var(--white); color: #9c4a3d; border-color: #9c4a3d; }
+.bm-btn-danger { background: var(--surface-card); color: #9c4a3d; border-color: #9c4a3d; }
 .bm-btn-danger:hover:not(:disabled) { background: #f6e9e6; }
 
-.bm-btn-reversed { background: transparent; color: var(--white); border-color: rgba(255, 255, 255, 0.7); }
-.bm-btn-reversed:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.bm-btn-reversed { background: transparent; color: var(--on-rail); border-color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
+.bm-btn-reversed:hover:not(:disabled) { background: color-mix(in srgb, var(--on-rail) 12%, transparent); }
 
 /* ---- Form fields ---- */
 .bm-field { display: flex; flex-direction: column; gap: 6px; }
@@ -306,12 +395,12 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   text-transform: uppercase; color: var(--text-caption);
 }
 .bm-input, .bm-select {
-  border: 1px solid var(--border-hairline); border-radius: var(--radius-control); background: var(--white);
+  border: 1px solid var(--border-hairline); border-radius: var(--radius-control); background: var(--surface-card);
   color: var(--text-body); font-size: 13px; padding: 10px 12px; outline: none; height: 40px;
   font-family: var(--font-sans);
 }
 .bm-input::placeholder { color: var(--gray-400); }
-.bm-input:focus, .bm-select:focus { border-color: var(--green-500); }
+.bm-input:focus, .bm-select:focus { border-color: var(--accent-text); }
 .bm-select { cursor: pointer; }
 .bm-select:disabled, .bm-input:disabled { opacity: 0.45; cursor: default; }
 
@@ -330,12 +419,12 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-view-toggle { display: inline-flex; height: 40px; border: 1px solid var(--border-hairline); border-radius: var(--radius-control); overflow: hidden; }
 .bm-view-toggle-btn {
   width: 40px; height: 100%; display: flex; align-items: center; justify-content: center;
-  border: none; background: var(--white); color: var(--gray-400); padding: 0; cursor: pointer;
+  border: none; background: var(--surface-card); color: var(--gray-400); padding: 0; cursor: pointer;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
 .bm-view-toggle-btn + .bm-view-toggle-btn { border-left: 1px solid var(--border-hairline); }
-.bm-view-toggle-btn:hover:not(.active):not(:disabled) { background: var(--gray-100); color: var(--text-body); }
-.bm-view-toggle-btn.active { background: var(--green-500); color: var(--white); }
+.bm-view-toggle-btn:hover:not(.active):not(:disabled) { background: var(--surface-card-alt); color: var(--text-body); }
+.bm-view-toggle-btn.active { background: var(--green-500); color: var(--on-accent); }
 .bm-view-toggle-btn:disabled { opacity: 0.45; cursor: default; }
 
 .bm-rule-row {
@@ -344,13 +433,13 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   border-bottom: var(--rule-heavy) solid var(--border-rule);
 }
 .bm-checkbox-label { display: flex; align-items: center; gap: var(--space-2); font-size: 13px; color: var(--text-body); cursor: pointer; }
-.bm-checkbox-label input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--green-500); }
+.bm-checkbox-label input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent-text); }
 .bm-rule-row-meta { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); }
 
 .bm-active-filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: 0 var(--space-6); }
 .bm-active-filters:not(:empty) { padding-top: var(--space-3); }
 .bm-active-filter {
-  font-size: 12px; color: var(--chip-color, var(--green-500)); display: flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--chip-color, var(--accent-text)); display: flex; align-items: center; gap: 5px;
   background: var(--chip-bg, var(--green-100)); padding: 5px 9px; border-radius: var(--radius-control);
 }
 .bm-active-filter button { border: none; background: none; cursor: pointer; display: flex; color: inherit; padding: 0; }
@@ -359,16 +448,16 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 /* Dragging files in from the OS file explorer (see renderGridInto's
    dragenter/dragover/dragleave/drop wiring) — inset so it never shifts
    layout, same trick .bm-card.selected's box-shadow ring already uses. */
-.bm-grid-wrap.drag-over { background: var(--green-050); box-shadow: inset 0 0 0 2px var(--green-500); }
+.bm-grid-wrap.drag-over { background: var(--green-050); box-shadow: inset 0 0 0 2px var(--accent-text); }
 .bm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4); }
 
 .bm-card {
-  background: var(--white); border: 1px solid var(--border-hairline); border-radius: var(--radius-control);
+  background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: var(--radius-control);
   cursor: pointer; overflow: hidden; position: relative; display: flex; flex-direction: column;
   transition: border-color var(--motion-fast);
 }
 .bm-card:hover { border-color: var(--green-300); }
-.bm-card.selected { border-color: var(--green-500); box-shadow: 0 0 0 1px var(--green-500); }
+.bm-card.selected { border-color: var(--accent-text); box-shadow: 0 0 0 1px var(--accent-text); }
 .bm-card-thumb {
   height: 132px; flex-shrink: 0; background: var(--surface-card-alt); border-bottom: 1px solid var(--border-hairline);
   position: relative; display: flex; align-items: center; justify-content: center;
@@ -384,7 +473,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   cursor: pointer; opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast);
 }
 .bm-card:hover .bm-card-open { opacity: 1; }
-.bm-card-open:hover { background: var(--green-500); }
+.bm-card-open:hover { background: var(--green-500); color: var(--on-accent); }
 .bm-card-body { padding: var(--space-3) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: 6px; }
 .bm-card-name {
   font-size: 13px; font-weight: 500; color: var(--text-body); line-height: 1.3;
@@ -430,14 +519,14 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   color: var(--text-caption);
 }
 .bm-list-header-sort:hover { color: var(--text-body); }
-.bm-list-header-sort.active { color: var(--green-500); }
+.bm-list-header-sort.active { color: var(--accent-text); }
 .bm-list-header-sort span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-col-resize {
   position: absolute; top: 0; right: calc(var(--space-3) / -2 - 1px); width: var(--space-3); height: 100%;
   cursor: col-resize;
 }
 .bm-col-resize::after { content: ""; position: absolute; top: 4px; bottom: 4px; left: 50%; width: 1px; background: var(--border-hairline); }
-.bm-col-resize:hover::after { background: var(--green-500); width: 2px; margin-left: -0.5px; }
+.bm-col-resize:hover::after { background: var(--accent-text); width: 2px; margin-left: -0.5px; }
 
 .bm-grid.bm-grid-list { display: flex; flex-direction: column; gap: 0; }
 .bm-grid.bm-grid-list .bm-card.bm-list-row {
@@ -445,7 +534,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   border: 1px solid transparent; border-bottom: 1px solid var(--border-hairline); border-radius: 0;
 }
 .bm-grid.bm-grid-list .bm-card.bm-list-row:hover { border-color: transparent; background: var(--surface-card-alt); }
-.bm-grid.bm-grid-list .bm-card.bm-list-row.selected { border-color: var(--green-500); box-shadow: none; background: var(--green-050); }
+.bm-grid.bm-grid-list .bm-card.bm-list-row.selected { border-color: var(--accent-text); box-shadow: none; background: var(--green-050); }
 .bm-list-thumb {
   width: 28px; height: 28px; flex-shrink: 0; border-radius: var(--radius-control); overflow: hidden;
   background: var(--surface-card-alt); border: 1px solid var(--border-hairline);
@@ -470,7 +559,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
 }
 .bm-grid.bm-grid-list .bm-card.bm-list-row:hover .bm-list-open { opacity: 1; }
-.bm-list-open:hover { background: var(--green-100); color: var(--green-500); }
+.bm-list-open:hover { background: var(--green-100); color: var(--accent-text); }
 
 .bm-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -482,12 +571,16 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 
 /* ---- Tag component ----
    Fill/text/border come from --tag-bg/--tag-color/--tag-border, set per instance
-   (see tagStyleAttr in renderer.js) so any user-picked tag color stays legible. */
+   (see tagStyleAttr in renderer.js) so any user-picked tag color stays legible
+   — deliberately absolute, not theme-dependent. Only the no-custom-color
+   fallback below (the ", var(--green-100))" / ", var(--accent-text))" part)
+   is theme-aware, same as everywhere else that pairs the pale tint role with
+   accent text. */
 .bm-tag {
   display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-condensed); font-size: 11px;
   font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px;
   border: 1px solid var(--tag-border, transparent); line-height: 1.3;
-  background: var(--tag-bg, var(--green-100)); color: var(--tag-color, var(--green-500));
+  background: var(--tag-bg, var(--green-100)); color: var(--tag-color, var(--accent-text));
 }
 .bm-tag-more { font-family: var(--font-condensed); font-size: 11px; color: var(--text-caption); align-self: center; }
 .bm-tag-remove { border: none; background: none; padding: 0; display: flex; cursor: pointer; color: inherit; }
@@ -505,12 +598,12 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
    click can't land right after an open click by accident. */
 .bm-preview-delete-row { display: flex; justify-content: flex-end; margin-top: var(--space-3); }
 .bm-preview-plate {
-  height: 260px; flex-shrink: 0; background: var(--gray-100); border: 1px solid var(--border-hairline);
+  height: 260px; flex-shrink: 0; background: var(--surface-card-alt); border: 1px solid var(--border-hairline);
   display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
 }
 .bm-preview-plate img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .bm-preview-plate embed { width: 100%; height: 100%; }
-.bm-preview-plate-doc { width: 150px; height: 200px; background: var(--white); border: 1px solid var(--border-hairline); display: flex; flex-direction: column; gap: 7px; padding: 14px; }
+.bm-preview-plate-doc { width: 150px; height: 200px; background: var(--surface-card); border: 1px solid var(--border-hairline); display: flex; flex-direction: column; gap: 7px; padding: 14px; }
 .bm-preview-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 /* Hairline between sections (Location, Tags, Comments, …) — replaces the
    old plain `gap` with the same spacing, now carried as padding-top so a
@@ -561,20 +654,20 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
 }
 .bm-recent-item:hover .bm-recent-undo-btn { opacity: 1; }
-.bm-recent-undo-btn:hover { background: var(--green-100); color: var(--green-500); }
+.bm-recent-undo-btn:hover { background: var(--green-100); color: var(--accent-text); }
 
 /* Multi-select preview — replaces the single big .bm-preview-plate with a
    scrollable grid of mini thumbnails, one per selected file. Clicking one
    narrows the selection back down to just that file. */
 .bm-preview-multi-grid {
-  height: 260px; flex-shrink: 0; background: var(--gray-100); border: 1px solid var(--border-hairline);
+  height: 260px; flex-shrink: 0; background: var(--surface-card-alt); border: 1px solid var(--border-hairline);
   overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: var(--space-3);
   padding: var(--space-3);
   align-content: start;
 }
 .bm-mini-card { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .bm-mini-thumb {
-  width: 56px; height: 56px; background: var(--white); border: 1px solid var(--border-hairline); border-radius: var(--radius-control);
+  width: 56px; height: 56px; background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: var(--radius-control);
   display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
 }
 .bm-mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
@@ -590,15 +683,15 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-tag-add-row { margin-top: var(--space-2); }
 .bm-tag-hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-.bm-inline-link { background: none; border: none; padding: 0; color: var(--green-500); text-decoration: underline; cursor: pointer; font-size: 12px; font-family: inherit; }
+.bm-inline-link { background: none; border: none; padding: 0; color: var(--accent-text); text-decoration: underline; cursor: pointer; font-size: 12px; font-family: inherit; }
 .bm-comments-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-2); }
 .bm-comment-row { display: flex; align-items: flex-start; gap: 6px; }
 .bm-comment-area {
   flex: 1; min-width: 0; min-height: 70px; border: 1px solid var(--border-hairline); border-radius: var(--radius-control);
   padding: 10px 12px; font-size: 13px; font-family: var(--font-sans); line-height: 1.55; resize: vertical; outline: none;
-  color: var(--text-body); background: var(--white);
+  color: var(--text-body); background: var(--surface-card);
 }
-.bm-comment-area:focus { border-color: var(--green-500); }
+.bm-comment-area:focus { border-color: var(--accent-text); }
 .bm-comment-remove { flex-shrink: 0; border: none; background: none; color: var(--text-muted); cursor: pointer; display: flex; padding: 4px; margin-top: 2px; }
 .bm-comment-remove:hover { color: #9c4a3d; }
 /* ---- Modals (shared) ---- */
@@ -607,9 +700,27 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 /* ---- Manage tags modal ---- */
 .bm-modal {
   width: 560px; max-width: calc(100vw - 40px); max-height: calc(100vh - 60px);
-  background: var(--white); border-top: var(--rule-heavy) solid var(--border-rule); box-shadow: var(--shadow-modal);
+  background: var(--surface-card); border-top: var(--rule-heavy) solid var(--border-rule); box-shadow: var(--shadow-modal);
   display: flex; flex-direction: column; overflow: visible;
 }
+.bm-commenter-modal { width: 420px; }
+.bm-settings-modal { width: 460px; }
+.bm-settings-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  padding: var(--space-3) 0; border-bottom: 1px solid var(--border-hairline);
+}
+.bm-settings-row:last-child { border-bottom: none; }
+.bm-settings-row-label { font-size: 13px; color: var(--text-body); font-weight: 500; }
+.bm-settings-row-value { font-size: 12px; color: var(--text-caption); margin-top: 2px; }
+.bm-theme-toggle { display: inline-flex; height: 34px; border: 1px solid var(--border-hairline); border-radius: var(--radius-control); overflow: hidden; flex-shrink: 0; }
+.bm-theme-toggle-btn {
+  padding: 0 12px; height: 100%; display: flex; align-items: center; justify-content: center;
+  border: none; background: var(--surface-card); color: var(--text-muted); font-size: 12.5px; cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.bm-theme-toggle-btn + .bm-theme-toggle-btn { border-left: 1px solid var(--border-hairline); }
+.bm-theme-toggle-btn:hover:not(.active) { background: var(--surface-card-alt); color: var(--text-body); }
+.bm-theme-toggle-btn.active { background: var(--accent-text); color: var(--on-accent); font-weight: 500; }
 .bm-modal-header { padding: var(--space-6) var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); flex-shrink: 0; }
 .bm-modal-title { font-size: 19px; font-weight: 600; color: var(--text-heading); }
 .bm-modal-sub { font-size: 13px; color: var(--text-muted); max-width: 52ch; line-height: 1.5; }
@@ -624,25 +735,29 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   letter-spacing: 0.03em; cursor: pointer; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   height: 40px;
 }
-.bm-shortcut-btn:hover { border-color: var(--green-500); color: var(--green-500); }
+.bm-shortcut-btn:hover { border-color: var(--accent-text); color: var(--accent-text); }
 .bm-shortcut-btn.recording { border-color: #9c4a3d; color: #9c4a3d; background: #f6e9e6; }
 .bm-tagrow-remove { flex-shrink: 0; border: none; background: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; }
 .bm-tagrow-remove:hover { color: #9c4a3d; }
 .bm-add-tagrow-btn {
   display: flex; align-items: center; gap: 6px; border: 1px dashed var(--border-hairline); background: none;
-  color: var(--green-500); border-radius: var(--radius-control); padding: 10px; font-size: 12.5px; cursor: pointer;
+  color: var(--accent-text); border-radius: var(--radius-control); padding: 10px; font-size: 12.5px; cursor: pointer;
   width: 100%; justify-content: center;
 }
-.bm-add-tagrow-btn:hover { border-color: var(--green-500); background: var(--green-100); }
+.bm-add-tagrow-btn:hover { border-color: var(--accent-text); background: var(--green-100); }
 .bm-modal-footer { display: flex; justify-content: flex-end; gap: var(--space-3); padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-hairline); flex-shrink: 0; }
 
-/* ---- Color picker popover ---- */
+/* ---- Color picker popover ----
+   Deliberately NOT themed — kept on a fixed light surface in every theme so
+   picking a tag's actual color stays visually accurate no matter which app
+   theme happens to be active (same reasoning as tag colors themselves being
+   theme-independent). */
 .bm-color-popover {
   /* position: fixed (not absolute) so it escapes .bm-modal-body's overflow-y:
      auto instead of being clipped — its top/left are set inline in JS from the
      swatch's actual screen position once the popover is attached to the DOM. */
   position: fixed; top: 0; left: 0; width: 300px; z-index: 5; background: var(--white);
-  border: 1px solid var(--border-hairline); border-radius: var(--radius-control); box-shadow: var(--shadow-popover);
+  border: 1px solid var(--gray-200); border-radius: var(--radius-control); box-shadow: var(--shadow-popover);
   padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);
 }
 .bm-sv-field { height: 148px; border-radius: var(--radius-control); position: relative; cursor: crosshair; user-select: none; touch-action: none; }
@@ -651,7 +766,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   border: 2px solid var(--white); box-shadow: 0 0 0 1px rgba(35, 31, 32, 0.4); pointer-events: none;
 }
 .bm-hue-row { display: flex; align-items: center; gap: var(--space-3); }
-.bm-hue-chip { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--border-hairline); flex-shrink: 0; }
+.bm-hue-chip { width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--gray-200); flex-shrink: 0; }
 .bm-hue-slider {
   flex: 1; height: 12px; border-radius: 999px; position: relative; cursor: pointer; user-select: none; touch-action: none;
   background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
@@ -661,23 +776,33 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   background: var(--white); border: 1px solid var(--gray-400); pointer-events: none;
 }
 .bm-rgb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
-.bm-rgb-grid .bm-input { padding: 8px 10px; height: 36px; min-width: 0; }
-.bm-picker-footer { display: flex; align-items: center; justify-content: space-between; padding-top: var(--space-1); border-top: 1px solid var(--border-hairline); }
-.bm-hex-readout { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); }
+.bm-rgb-grid .bm-input { padding: 8px 10px; height: 36px; min-width: 0; background: var(--white); border-color: var(--gray-200); }
+.bm-picker-footer { display: flex; align-items: center; justify-content: space-between; padding-top: var(--space-1); border-top: 1px solid var(--gray-200); }
+.bm-hex-readout { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--gray-600); }
 
 /* ---- About window ---- */
-.bm-about-modal { width: 520px; max-width: calc(100vw - 40px); background: var(--white); border: 1px solid var(--border-hairline); box-shadow: var(--shadow-modal); }
+.bm-about-modal { width: 520px; max-width: calc(100vw - 40px); background: var(--surface-card); border: 1px solid var(--border-hairline); box-shadow: var(--shadow-modal); }
 .bm-about-chrome {
   height: 38px; display: flex; align-items: center; justify-content: space-between; padding-left: 14px;
   border-bottom: 1px solid var(--border-hairline);
 }
 .bm-about-chrome-title { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); }
 .bm-about-close { width: 42px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--gray-600); background: none; border: none; cursor: pointer; }
-.bm-about-close:hover { background: var(--gray-100); }
-.bm-about-band { background: var(--surface-rail); color: var(--white); padding: var(--space-6); display: flex; gap: var(--space-5); align-items: center; }
+.bm-about-close:hover { background: var(--surface-card-alt); }
+.bm-about-band { background: var(--surface-rail); color: var(--on-rail); padding: var(--space-6); display: flex; gap: var(--space-5); align-items: center; }
 .bm-about-title { font-size: 26px; font-weight: 600; letter-spacing: var(--tracking-tight); }
-.bm-about-tagline { font-size: 13px; color: rgba(255, 255, 255, 0.85); }
-.bm-about-version { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: rgba(255, 255, 255, 0.75); }
+.bm-about-tagline { font-size: 13px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); }
+.bm-about-version { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 75%, transparent); }
+.bm-about-rollback { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.bm-about-rollback-btn {
+  display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  background: none; border: none; border-bottom: 1px solid color-mix(in srgb, var(--on-rail) 40%, transparent); padding: 0;
+  font-family: inherit; font-size: 12px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); cursor: pointer;
+}
+.bm-about-rollback-btn svg { flex-shrink: 0; }
+.bm-about-rollback-btn:hover:not(:disabled) { color: var(--on-rail); border-bottom-color: var(--on-rail); }
+.bm-about-rollback-btn:disabled { opacity: 0.5; cursor: default; }
+.bm-about-rollback-status { font-size: 11px; color: color-mix(in srgb, var(--on-rail) 60%, transparent); }
 .bm-about-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); max-height: calc(100vh - 260px); overflow-y: auto; }
 .bm-about-desc { font-size: 13px; color: var(--text-muted); max-width: 56ch; line-height: 1.5; }
 .bm-about-credits-label { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); border-bottom: 1px solid var(--border-hairline); padding-bottom: 6px; margin-bottom: var(--space-3); }
@@ -688,5 +813,5 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-about-repo-link { font-size: 13px; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 6px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -122,10 +122,16 @@ const state = {
   recordingShortcutIdx: null, // index into tagModalDraft currently listening for a keypress
   colorPicker: null, // { idx, h, s, v } — the tag-row color picker popover, or null if closed
   aboutOpen: false,
+  commenterName: "", // per-device name signed onto new comments — see main.js's settings.json
+  commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
+  commenterNameDraft: "", // working copy of commenterName while the name modal is open
+  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme)
+  theme: "light", // "light" | "dark" | "midnight" — per-device, see main.js's settings.json
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
+  rollbackStatus: { state: "idle" }, // idle | checking | downloading | installing | manual (Mac) | error
   windowMaximized: false,
 };
 
@@ -328,7 +334,7 @@ function renderFolderTree(node, depth) {
     .map(
       (child) => `
       <div class="bm-nav-item ${state.activeFolder === child.path ? "active" : ""}" data-folder="${child.path.replace(/"/g, "&quot;")}" style="padding-left:${10 + depth * 14}px">
-        <span class="bm-nav-name">${ICONS.folder}${child.name}</span><span class="bm-nav-count">${child.total}</span>
+        <span class="bm-nav-name">${ICONS.folder}<span class="bm-nav-name-text">${child.name}</span></span><span class="bm-nav-count">${child.total}</span>
       </div>
       ${renderFolderTree(child, depth + 1)}`
     )
@@ -601,16 +607,39 @@ function flushPendingComments() {
 // blur becomes one undo step, rather than one per keystroke.
 const commentEditSnapshot = {};
 
+// Signature line auto-appended as line two of every newly-created comment, so
+// whoever reads it later knows who wrote it and when. Uses commenterName as
+// typed/stored in settings.json (see main.js) rather than any OS-level
+// account name, since one device can be shared and the name is meant to be
+// whatever the person answered the "Your name for comments" prompt with.
+function commentAttributionLine() {
+  const name = state.commenterName || "Unknown";
+  const stamp = new Date().toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `— ${name} · ${stamp}`;
+}
+
 function addComment() {
   const file = getSelectedFiles()[0];
   if (!file) return;
   const prevComments = [...file.comments];
   const path = file.path;
-  file.comments = [...file.comments, ""];
+  // Blank first line is where the user types; the signature is pre-filled as
+  // line two so it's there even if they close the app before typing anything.
+  file.comments = [...file.comments, `\n${commentAttributionLine()}`];
   render();
+  saveFileMeta(state.folder, path, { comments: file.comments });
   const areas = document.querySelectorAll(".bm-comment-area");
   const last = areas[areas.length - 1];
-  if (last) last.focus();
+  if (last) {
+    last.focus();
+    last.setSelectionRange(0, 0); // cursor at the very start, ahead of the signature
+  }
   pushUndo("Add comment", () => saveFileMeta(state.folder, path, { comments: prevComments }));
 }
 
@@ -634,11 +663,12 @@ function removeComment(idx) {
 async function addCommentToSelected(text) {
   const comment = (text || "").trim();
   if (!comment) return;
+  const signed = `${comment}\n${commentAttributionLine()}`;
   const files = getSelectedFiles();
   if (files.length === 0) return;
   const prev = files.map((f) => ({ path: f.path, comments: [...f.comments] }));
   files.forEach((f) => {
-    f.comments = [...f.comments, comment];
+    f.comments = [...f.comments, signed];
   });
   render();
   await Promise.all(files.map((f) => saveFileMeta(state.folder, f.path, { comments: f.comments })));
@@ -1152,7 +1182,7 @@ document.addEventListener("keydown", (e) => {
   if (isEditableTarget(document.activeElement)) return;
   const combo = comboFromEvent(e);
   if (combo !== "Ctrl+A" && combo !== "Cmd+A") return;
-  if (!state.folder || state.tagModalOpen || state.aboutOpen || state.colorPicker) return;
+  if (!state.folder || state.tagModalOpen || state.aboutOpen || state.colorPicker || state.commenterModalOpen || state.settingsModalOpen) return;
   e.preventDefault();
   const filtered = getFiltered();
   if (filtered.length === 0) return;
@@ -1176,6 +1206,8 @@ document.addEventListener("keydown", (e) => {
   if (state.colorPicker) closeColorPicker();
   else if (state.tagModalOpen) closeTagManager(false);
   else if (state.aboutOpen) closeAbout();
+  else if (state.commenterModalOpen) closeCommenterNameModal();
+  else if (state.settingsModalOpen) closeSettingsModal();
 });
 
 // Global shortcut dispatch: toggles the matching predefined tag on every
@@ -1233,7 +1265,7 @@ function scrollCardIntoView(path) {
 document.addEventListener("keydown", (e) => {
   if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
   if (isEditableTarget(document.activeElement)) return;
-  if (state.tagModalOpen || state.aboutOpen || state.colorPicker || state.recordingShortcutIdx !== null) return;
+  if (state.tagModalOpen || state.aboutOpen || state.colorPicker || state.commenterModalOpen || state.settingsModalOpen || state.recordingShortcutIdx !== null) return;
   const filtered = getFiltered();
   if (filtered.length === 0) return;
 
@@ -1322,6 +1354,8 @@ function render() {
     if (state.colorPicker) positionColorPopover(overlay);
   }
   if (state.aboutOpen) app.appendChild(renderAbout());
+  if (state.settingsModalOpen) app.appendChild(renderSettingsModal());
+  if (state.commenterModalOpen) app.appendChild(renderCommenterNameModal());
 }
 
 // Full-window loading state shown only during the startup sequence in init()
@@ -1423,6 +1457,39 @@ function updateStatusLabel() {
   return "";
 }
 
+// ---- Roll back to previous version ----
+// Shown as a small link/status pair right under the version number in the
+// About window. Unlike the update flow above, this is user-initiated only
+// and always asks for confirmation first, since it quits the app and
+// replaces it with an older build.
+function rollbackStatusLabel() {
+  const s = state.rollbackStatus;
+  if (s.state === "checking") return "Looking up the previous version…";
+  if (s.state === "downloading") return `Downloading ${s.version ?? "previous version"}… ${s.percent ?? 0}%`;
+  if (s.state === "installing") return "Quitting to roll back…";
+  if (s.state === "manual") return `Opened ${s.version} on GitHub — install it by hand`;
+  if (s.state === "error") return `Roll back failed: ${s.message || ""}`;
+  return "";
+}
+
+function rollbackInProgress() {
+  return ["checking", "downloading", "installing"].includes(state.rollbackStatus.state);
+}
+
+async function rollbackToPreviousVersion() {
+  if (rollbackInProgress()) return;
+  if (
+    !confirm(
+      "Roll back to the version before the current release?\n\nBillManager will download it from GitHub, then quit and reinstall it. Any unsaved changes should be saved first."
+    )
+  ) {
+    return;
+  }
+  state.rollbackStatus = { state: "checking" };
+  render();
+  await window.api.rollbackToPreviousVersion();
+}
+
 function renderRailFooter() {
   const s = state.updateStatus;
   let action;
@@ -1448,12 +1515,16 @@ function renderRailFooter() {
     <div class="bm-rail-footer">
       <div class="bm-rail-footer-row">
         <span>Version ${state.appVersion}</span>
-        <button class="bm-rail-link" id="about-link">About</button>
+        <div class="bm-rail-footer-links">
+          <button class="bm-rail-link" id="options-link">Options</button>
+          <button class="bm-rail-link" id="about-link">About</button>
+        </div>
       </div>
       ${action}
     </div>
   `);
 
+  footer.querySelector("#options-link").addEventListener("click", openSettingsModal);
   footer.querySelector("#about-link").addEventListener("click", openAbout);
   const checkBtn = footer.querySelector("#update-check");
   if (checkBtn) checkBtn.addEventListener("click", checkForUpdates);
@@ -1497,11 +1568,11 @@ function renderRail() {
             ? `
         <div class="bm-rail-label">Folders</div>
         <div class="bm-nav-item ${state.activeTags.size === 0 && !state.activeFolder && !state.untaggedOnly && !state.looseOnly ? "active" : ""}" id="nav-all">
-          <span class="bm-nav-name">${ICONS.folder}All files</span>
+          <span class="bm-nav-name">${ICONS.folder}<span class="bm-nav-name-text">All files</span></span>
           <span class="bm-nav-count">${state.files.length}</span>
         </div>
         <div class="bm-nav-item dim ${state.looseOnly ? "active" : ""}" id="nav-loose">
-          <span class="bm-nav-name">Loose files</span>
+          <span class="bm-nav-name"><span class="bm-nav-name-text">Loose files</span></span>
           <span class="bm-nav-count">${looseCount}</span>
         </div>
         ${
@@ -2211,7 +2282,8 @@ function renderPreviewSingle(file) {
                     .map(
                       (c, i) => `
                 <div class="bm-comment-row" data-idx="${i}">
-                  <textarea class="bm-comment-area" data-idx="${i}" placeholder="Write a comment…">${escapeHtml(c)}</textarea>
+                  <textarea class="bm-comment-area" data-idx="${i}" placeholder="Write a comment…">
+${escapeHtml(c)}</textarea>
                   <button class="bm-comment-remove" data-idx="${i}" title="Delete comment">${ICONS.x}</button>
                 </div>`
                     )
@@ -2593,6 +2665,8 @@ function closeAbout() {
 
 function renderAbout() {
   const status = updateStatusLabel();
+  const rollbackBusy = rollbackInProgress();
+  const rollbackCaption = rollbackStatusLabel() || "This may take a while.";
   const overlay = el(`
     <div class="bm-modal-overlay" id="about-overlay">
       <div class="bm-about-modal">
@@ -2606,6 +2680,10 @@ function renderAbout() {
             <div class="bm-about-title">BillManager</div>
             <div class="bm-about-tagline">Anabaptist Brotherhood internal software</div>
             <div class="bm-about-version">Version ${state.appVersion}${status ? ` · ${status}` : ""}</div>
+            <div class="bm-about-rollback">
+              <button class="bm-about-rollback-btn" id="about-rollback-btn" ${rollbackBusy ? "disabled" : ""}>${ICONS.undo} Roll back to previous version</button>
+              <span class="bm-about-rollback-status">${rollbackCaption}</span>
+            </div>
           </div>
         </div>
         <div class="bm-about-body">
@@ -2638,6 +2716,168 @@ function renderAbout() {
     e.preventDefault();
     window.api.openRepo();
   });
+  overlay.querySelector("#about-rollback-btn").addEventListener("click", rollbackToPreviousVersion);
+
+  return overlay;
+}
+
+// ---- Options (device settings) ----
+// Home for per-device settings — right now just the comment name, but a
+// natural place to add more later without cluttering the rail footer with a
+// growing row of links.
+function openSettingsModal() {
+  if (state.tagModalOpen) closeTagManager(false);
+  if (state.aboutOpen) closeAbout();
+  state.settingsModalOpen = true;
+  render();
+}
+
+function closeSettingsModal() {
+  state.settingsModalOpen = false;
+  render();
+}
+
+const THEME_CHOICES = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "midnight", label: "Midnight" },
+];
+
+// Sets the <html data-theme> attribute the whole stylesheet keys off of (see
+// the [data-theme="dark"]/[data-theme="midnight"] blocks at the top of
+// styles.css) — "light" matches no block, which is exactly right since :root
+// already *is* the light theme.
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme || "light");
+}
+
+async function setTheme(theme) {
+  if (theme === state.theme) return;
+  state.theme = theme;
+  applyTheme(theme);
+  render();
+  await window.api.setTheme(theme);
+}
+
+function renderSettingsModal() {
+  const overlay = el(`
+    <div class="bm-modal-overlay" id="settings-modal-overlay">
+      <div class="bm-modal bm-settings-modal">
+        <div class="bm-modal-header">
+          <div class="bm-modal-title">Options</div>
+          <div class="bm-modal-sub">Settings here are stored on this device only, separate from the catalog folder — each computer can have its own.</div>
+        </div>
+        <div class="bm-modal-body">
+          <div class="bm-settings-row">
+            <div>
+              <div class="bm-settings-row-label">Appearance</div>
+              <div class="bm-settings-row-value">Applies immediately on this device.</div>
+            </div>
+            <div class="bm-theme-toggle" role="group">
+              ${THEME_CHOICES.map(
+                (t) =>
+                  `<button class="bm-theme-toggle-btn ${state.theme === t.value ? "active" : ""}" data-theme-choice="${t.value}">${t.label}</button>`
+              ).join("")}
+            </div>
+          </div>
+          <div class="bm-settings-row">
+            <div>
+              <div class="bm-settings-row-label">Comment name</div>
+              <div class="bm-settings-row-value">${escapeHtml(state.commenterName || "Not set")}</div>
+            </div>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-name-btn">Change</button>
+          </div>
+        </div>
+        <div class="bm-modal-footer">
+          <button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm" id="settings-modal-close">Close</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  overlay.addEventListener("mousedown", (e) => {
+    if (e.target === overlay) closeSettingsModal();
+  });
+  overlay.querySelector("#settings-modal-close").addEventListener("click", closeSettingsModal);
+  overlay.querySelectorAll(".bm-theme-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => setTheme(btn.dataset.themeChoice));
+  });
+  overlay.querySelector("#settings-change-name-btn").addEventListener("click", () => {
+    state.settingsModalOpen = false;
+    openCommenterNameModal();
+  });
+
+  return overlay;
+}
+
+// ---- Commenting name ----
+// Per-device name (see main.js's settings.json) that commentAttributionLine
+// signs onto every new comment. Shown unskippably on first launch — there's
+// no Cancel/✕/backdrop-close/Escape until a name has actually been saved —
+// and reopenable any time after that from the Options dialog to change it.
+function openCommenterNameModal() {
+  if (state.tagModalOpen) closeTagManager(false);
+  if (state.aboutOpen) closeAbout();
+  if (state.settingsModalOpen) closeSettingsModal();
+  state.commenterNameDraft = state.commenterName;
+  state.commenterModalOpen = true;
+  render();
+}
+
+function closeCommenterNameModal() {
+  if (!state.commenterName) return; // first-run prompt — must save a name to leave
+  state.commenterModalOpen = false;
+  render();
+}
+
+async function saveCommenterName(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return;
+  state.commenterName = trimmed;
+  state.commenterModalOpen = false;
+  render();
+  await window.api.setCommenterName(trimmed);
+}
+
+function renderCommenterNameModal() {
+  const isFirstRun = !state.commenterName;
+  const overlay = el(`
+    <div class="bm-modal-overlay" id="commenter-modal-overlay">
+      <div class="bm-modal bm-commenter-modal">
+        <div class="bm-modal-header">
+          <div class="bm-modal-title">${isFirstRun ? "What's your name?" : "Your name for comments"}</div>
+          <div class="bm-modal-sub">Comments are automatically signed with this name and the date and time, so it's stored on this device only — each computer can have its own.</div>
+        </div>
+        <div class="bm-modal-body">
+          <input class="bm-input" id="commenter-name-input" placeholder="e.g. Kevin Beachy" value="${state.commenterNameDraft.replace(/"/g, "&quot;")}" />
+        </div>
+        <div class="bm-modal-footer">
+          ${isFirstRun ? "" : `<button class="bm-btn bm-btn-ghost bm-btn-sm" id="commenter-modal-cancel">Cancel</button>`}
+          <button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm" id="commenter-modal-save" disabled>Save</button>
+        </div>
+      </div>
+    </div>
+  `);
+
+  const input = overlay.querySelector("#commenter-name-input");
+  const saveBtn = overlay.querySelector("#commenter-modal-save");
+  saveBtn.disabled = !input.value.trim();
+  input.addEventListener("input", () => {
+    saveBtn.disabled = !input.value.trim();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !saveBtn.disabled) saveCommenterName(input.value);
+  });
+  overlay.addEventListener("mousedown", (e) => {
+    if (e.target === overlay) closeCommenterNameModal();
+  });
+  const cancelBtn = overlay.querySelector("#commenter-modal-cancel");
+  if (cancelBtn) cancelBtn.addEventListener("click", closeCommenterNameModal);
+  saveBtn.addEventListener("click", () => saveCommenterName(input.value));
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
 
   return overlay;
 }
@@ -2646,9 +2886,21 @@ function renderAbout() {
 // back to the normal empty state if there's no remembered folder, or listing it
 // fails (e.g. it was deleted or a removable drive is unplugged).
 (async function init() {
+  // Applied before the first render (and before any other await) so the
+  // loading screen itself paints in the right theme instead of flashing
+  // light-then-switching.
+  state.theme = (await window.api.getTheme()) || "light";
+  applyTheme(state.theme);
   render(); // paint the loading screen immediately, before any of the awaits below
   state.appVersion = await window.api.getAppVersion();
+  state.commenterName = (await window.api.getCommenterName()) || "";
+  state.commenterNameDraft = state.commenterName;
+  if (!state.commenterName) state.commenterModalOpen = true;
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
+  window.api.onRollbackStatus((status) => {
+    state.rollbackStatus = status;
+    render();
+  });
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
   state.windowMaximized = await window.api.windowIsMaximized();
   window.api.onWindowState((s) => {

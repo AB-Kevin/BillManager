@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld("api", {
   saveTagConfig: (folder, tags) => ipcRenderer.invoke("save-tag-config", folder, tags),
   getLastFolder: () => ipcRenderer.invoke("get-last-folder"),
   setLastFolder: (folder) => ipcRenderer.invoke("set-last-folder", folder),
+  getCommenterName: () => ipcRenderer.invoke("get-commenter-name"),
+  setCommenterName: (name) => ipcRenderer.invoke("set-commenter-name", name),
+  getTheme: () => ipcRenderer.invoke("get-theme"),
+  setTheme: (theme) => ipcRenderer.invoke("set-theme", theme),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("download-update"),
@@ -36,6 +40,12 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("update-status", listener);
   },
   openRepo: () => ipcRenderer.invoke("open-repo-page"),
+  rollbackToPreviousVersion: () => ipcRenderer.invoke("rollback-to-previous-version"),
+  onRollbackStatus: (callback) => {
+    const listener = (event, status) => callback(status);
+    ipcRenderer.on("rollback-status", listener);
+    return () => ipcRenderer.removeListener("rollback-status", listener);
+  },
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximizeToggle: () => ipcRenderer.invoke("window-maximize-toggle"),
   windowClose: () => ipcRenderer.invoke("window-close"),
