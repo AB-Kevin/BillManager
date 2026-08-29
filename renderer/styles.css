@@ -207,6 +207,10 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
    (e.g. the rail's version/About footer) gets clipped by #app's overflow:
    hidden with no way to scroll to it. */
 .bm-body { flex: 1; display: grid; grid-template-columns: 268px 1fr 384px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
+/* Review mode (see renderReviewMain) drops the rail's 268px track — its one
+   big viewer fills that space too — while the right-hand preview pane keeps
+   its usual 384px. */
+.bm-body-review { grid-template-columns: 1fr 384px; }
 
 /* ---- Startup loading screen (see renderLoadingScreen in renderer.js) ---- */
 .bm-loading-screen {
@@ -406,14 +410,15 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 
 /* ---- Main column ---- */
 .bm-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.bm-toolbar { display: flex; align-items: flex-end; gap: var(--space-4); padding: var(--space-5) var(--space-6) var(--space-4); }
-.bm-toolbar-search { flex: 1; min-width: 0; }
+.bm-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-4); padding: var(--space-5) var(--space-6) var(--space-4); }
+.bm-toolbar-search { flex: 1 1 220px; min-width: 220px; }
 .bm-toolbar-search .bm-search-input-wrap { position: relative; }
 .bm-toolbar-search .bm-search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .bm-toolbar-search input { padding-left: 34px; }
 .bm-toolbar-sort { width: 200px; flex-shrink: 0; }
 .bm-toolbar-view { flex-shrink: 0; margin-bottom: 1px; }
 .bm-toolbar-undo { flex-shrink: 0; margin-bottom: 1px; }
+.bm-toolbar-review { flex-shrink: 0; margin-bottom: 1px; }
 
 /* ---- Grid/list view toggle ---- */
 .bm-view-toggle { display: inline-flex; height: 40px; border: 1px solid var(--border-hairline); border-radius: var(--radius-control); overflow: hidden; }
@@ -604,6 +609,30 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-preview-plate img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .bm-preview-plate embed { width: 100%; height: 100%; }
 .bm-preview-plate-doc { width: 150px; height: 200px; background: var(--surface-card); border: 1px solid var(--border-hairline); display: flex; flex-direction: column; gap: 7px; padding: 14px; }
+
+/* Inner wrapper the rotate button (review mode/mountRotatedPlate) transforms
+   and resizes — sized to the plate's own box, swapped when rotated 90°/270°,
+   so a portrait scan rotated onto its side still fills the plate instead of
+   overflowing or shrinking off-center. Shared by both plates below. */
+.bm-rotate-frame { display: flex; align-items: center; justify-content: center; transition: transform var(--motion-fast); }
+
+/* ---- Review mode ---- */
+/* Big single-file viewer that replaces the rail + file grid (see
+   renderReviewMain/.bm-body-review) — same plate treatment as the small
+   preview's .bm-preview-plate above, just filling the space instead of a
+   fixed 260px. */
+.bm-review-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: var(--space-5) var(--space-6); gap: var(--space-4); }
+.bm-review-topbar { display: flex; flex-direction: column; gap: var(--space-2); }
+.bm-review-scope { font-size: 13px; color: var(--text-body); }
+.bm-review-controls-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.bm-review-counter { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); }
+.bm-review-nav { display: flex; gap: var(--space-2); margin-left: auto; }
+.bm-review-plate {
+  flex: 1; min-height: 0; background: var(--surface-card-alt); border: 1px solid var(--border-hairline);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
+}
+.bm-review-plate img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.bm-review-plate embed { width: 100%; height: 100%; }
 .bm-preview-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 /* Hairline between sections (Location, Tags, Comments, …) — replaces the
    old plain `gap` with the same spacing, now carried as padding-top so a

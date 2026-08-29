@@ -395,6 +395,40 @@ ipcMain.handle("get-theme", () => readSettings().theme || null);
 
 ipcMain.handle("set-theme", (event, theme) => writeSettings({ theme }));
 
+// Per-file rotation, for review mode's "fix a sideways/upside-down scan"
+// button (see the renderer's rotateFile). This is a view-only fix — there's
+// no safe, dependency-free way to physically re-encode a rotated JPG/PNG or
+// rewrite a PDF page's /Rotate entry, and this app would rather never risk
+// corrupting a bill's actual bytes than "really" fix the file — so it's kept
+// as a small side table instead of embedded metadata like tags/comments
+// (see readFileMeta/writeFileMeta above). Keyed by absolute path since it's
+// not part of the catalog folder at all; moving or renaming a file loses its
+// rotation as a result, since nothing ties the old and new absolute paths
+// together — an accepted, minor limitation of a purely cosmetic fix.
+const ROTATIONS_FILE = path.join(app.getPath("userData"), "rotations.json");
+
+function readRotations() {
+  try {
+    return JSON.parse(fs.readFileSync(ROTATIONS_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeRotation(full, degrees) {
+  const rotations = readRotations();
+  const normalized = ((degrees % 360) + 360) % 360;
+  if (normalized === 0) delete rotations[full];
+  else rotations[full] = normalized;
+  fs.mkdirSync(path.dirname(ROTATIONS_FILE), { recursive: true });
+  fs.writeFileSync(ROTATIONS_FILE, JSON.stringify(rotations), "utf8");
+}
+
+ipcMain.handle("set-rotation", async (event, folder, relPath, degrees) => {
+  writeRotation(path.join(folder, relPath), degrees);
+  return true;
+});
+
 // Recursively collects accepted files under `root`, descending into subfolders.
 // Dotfiles/dotfolders (e.g. a leftover legacy ".catalog-tags.json", ".git") are
 // skipped. Each result's `dir` is the relative path (using "/" separators) of its
@@ -689,6 +723,7 @@ ipcMain.handle("nudge-window-focus", async () => {
 
 ipcMain.handle("list-files", async (event, folder) => {
   const found = walkFiles(folder);
+  const rotations = readRotations();
   return Promise.all(
     found.map(async ({ relPath, dir }) => {
       const full = path.join(folder, relPath);
@@ -707,6 +742,7 @@ ipcMain.handle("list-files", async (event, folder) => {
         created: stat.birthtimeMs || stat.ctimeMs,
         tags: meta.tags,
         comments: meta.comments,
+        rotation: rotations[full] || 0,
       };
     })
   );

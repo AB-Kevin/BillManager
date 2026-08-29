@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("api", {
   setCommenterName: (name) => ipcRenderer.invoke("set-commenter-name", name),
   getTheme: () => ipcRenderer.invoke("get-theme"),
   setTheme: (theme) => ipcRenderer.invoke("set-theme", theme),
+  setRotation: (folder, filename, degrees) => ipcRenderer.invoke("set-rotation", folder, filename, degrees),
   getAppVersion: () => ipcRenderer.invoke("get-app-version"),
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
   downloadUpdate: () => ipcRenderer.invoke("download-update"),

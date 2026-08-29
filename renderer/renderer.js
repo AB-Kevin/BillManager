@@ -22,6 +22,10 @@ const ICONS = {
   winMaximize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>`,
   winRestore: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="2.5" y="0.5" width="7" height="7" fill="none" stroke="currentColor"/><path d="M0.5 2.5V9.5H7.5" fill="none" stroke="currentColor"/></svg>`,
   winClose: `<svg width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5 9.5 9.5 M9.5 0.5 0.5 9.5" stroke="currentColor"/></svg>`,
+  eye: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  rotate: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 7.6A7.5 7.5 0 1 0 20 12"/><polyline points="21 4 20 8 16 7"/></svg>`,
+  chevronLeft: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>`,
+  chevronRight: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
 };
 
 // The "Stack" app mark (design_handoff_billmanager_refresh — application icon spec):
@@ -129,6 +133,11 @@ const state = {
   theme: "light", // "light" | "dark" | "midnight" — per-device, see main.js's settings.json
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
+  reviewMode: false, // true while review mode's full-size viewer replaces the rail+grid — see enterReviewMode
+  reviewCursor: null, // relative path of the file currently shown in review mode
+  reviewLastIndex: 0, // index reviewCursor was last found at in getFiltered() — see maybeAdvanceReview
+  preReviewSelected: null, // Set snapshot of state.selected from just before review mode started, restored on exit
+  preReviewAnchor: null, // ditto for state.selectAnchor
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
   rollbackStatus: { state: "idle" }, // idle | checking | downloading | installing | manual (Mac) | error
@@ -1182,7 +1191,7 @@ document.addEventListener("keydown", (e) => {
   if (isEditableTarget(document.activeElement)) return;
   const combo = comboFromEvent(e);
   if (combo !== "Ctrl+A" && combo !== "Cmd+A") return;
-  if (!state.folder || state.tagModalOpen || state.aboutOpen || state.colorPicker || state.commenterModalOpen || state.settingsModalOpen) return;
+  if (!state.folder || state.reviewMode || state.tagModalOpen || state.aboutOpen || state.colorPicker || state.commenterModalOpen || state.settingsModalOpen) return;
   e.preventDefault();
   const filtered = getFiltered();
   if (filtered.length === 0) return;
@@ -1208,6 +1217,7 @@ document.addEventListener("keydown", (e) => {
   else if (state.aboutOpen) closeAbout();
   else if (state.commenterModalOpen) closeCommenterNameModal();
   else if (state.settingsModalOpen) closeSettingsModal();
+  else if (state.reviewMode) exitReviewMode();
 });
 
 // Global shortcut dispatch: toggles the matching predefined tag on every
@@ -1265,6 +1275,7 @@ function scrollCardIntoView(path) {
 document.addEventListener("keydown", (e) => {
   if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
   if (isEditableTarget(document.activeElement)) return;
+  if (state.reviewMode) return; // the grid isn't even on screen — see the review-mode arrow handler below instead
   if (state.tagModalOpen || state.aboutOpen || state.colorPicker || state.commenterModalOpen || state.settingsModalOpen || state.recordingShortcutIdx !== null) return;
   const filtered = getFiltered();
   if (filtered.length === 0) return;
@@ -1304,6 +1315,110 @@ document.addEventListener("keydown", (e) => {
   scrollCardIntoView(target.path);
 });
 
+// ---- Review mode ----
+// A focused, one-file-at-a-time view: the rail and file grid give way to a
+// big preview (see renderReviewMain) while the right-hand pane keeps its
+// normal tags/comments/location/delete controls, still driven by
+// state.selected exactly as it is outside review mode — entering/moving
+// through review just keeps state.selected pinned to state.reviewCursor
+// (see setReviewCursorState) so renderPreviewSingle needs no other changes.
+
+// Same idea as isEditableTarget, plus <select> — arrow keys are also how a
+// focused dropdown's own value changes, so review-mode navigation needs to
+// stay out of the way of both a text field *and* an open tag/location select.
+function isEditableOrDropdownTarget(elm) {
+  return isEditableTarget(elm) || (!!elm && elm.tagName === "SELECT");
+}
+
+function enterReviewMode() {
+  if (!state.folder) return;
+  const filtered = getFiltered();
+  if (filtered.length === 0) return;
+  state.preReviewSelected = new Set(state.selected);
+  state.preReviewAnchor = state.selectAnchor;
+  state.reviewMode = true;
+  state.reviewLastIndex = 0;
+  setReviewCursorState(filtered[0].path);
+  render();
+}
+
+// Pure state mutation, no render() — shared by exitReviewMode (a user action,
+// which does need to render) and maybeAdvanceReview (called from inside
+// render() itself, where a nested render() would recurse).
+function exitReviewModeState() {
+  state.reviewMode = false;
+  state.selected = state.preReviewSelected || new Set();
+  state.selectAnchor = state.preReviewAnchor || null;
+  state.navCursor = state.selectAnchor;
+  state.reviewCursor = null;
+  state.preReviewSelected = null;
+  state.preReviewAnchor = null;
+}
+
+function exitReviewMode() {
+  exitReviewModeState();
+  render();
+}
+
+// Points review at `path`, keeping state.selected (and hence the right-hand
+// preview pane) in lockstep — see the file-level comment above.
+function setReviewCursorState(path) {
+  state.reviewCursor = path;
+  state.selected = new Set([path]);
+  state.selectAnchor = path;
+  state.navCursor = path;
+}
+
+// Previous/next buttons and arrow keys — pure navigation within the current
+// filtered order, never touching the file's tags/folder/etc.
+function reviewStep(dir) {
+  if (!state.reviewMode) return;
+  const filtered = getFiltered();
+  const idx = filtered.findIndex((f) => f.path === state.reviewCursor);
+  if (idx === -1) return; // maybeAdvanceReview (below) handles a vanished current file
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= filtered.length) return; // already at an edge
+  setReviewCursorState(filtered[newIdx].path);
+  state.reviewLastIndex = newIdx;
+  render();
+}
+
+// Called at the top of render(): when the file under review stops matching
+// the active search/tag/folder filter — tagged into a different bucket,
+// moved to another folder, deleted, or (in the "no tag" filter) given its
+// first tag — review is done with it, so it steps on to whatever now sits at
+// about the same spot in the list, same as if Next had been clicked.
+// Centralized here (rather than threaded through addTag/removeTag/
+// moveSelected/deleteSelected/refreshFiles) since render() already runs
+// after every one of those.
+function maybeAdvanceReview() {
+  if (!state.reviewMode) return;
+  const filtered = getFiltered();
+  const idx = filtered.findIndex((f) => f.path === state.reviewCursor);
+  if (idx !== -1) {
+    state.reviewLastIndex = idx;
+    return;
+  }
+  if (filtered.length === 0) {
+    exitReviewModeState();
+    return;
+  }
+  const nextIdx = Math.min(state.reviewLastIndex, filtered.length - 1);
+  setReviewCursorState(filtered[nextIdx].path);
+  state.reviewLastIndex = nextIdx;
+}
+
+// Up/Left = previous, Down/Right = next — a distinct convention from the
+// grid's own Left/Right-along-Up/Down-by-row scheme (see the arrow-key
+// handler above), specific to review mode's linear, one-at-a-time flow.
+document.addEventListener("keydown", (e) => {
+  if (!state.reviewMode) return;
+  if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  if (isEditableOrDropdownTarget(document.activeElement)) return;
+  e.preventDefault();
+  reviewStep(e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 1);
+});
+
 function el(html) {
   const t = document.createElement("template");
   t.innerHTML = html.trim();
@@ -1337,9 +1452,14 @@ function render() {
     app.appendChild(renderLoadingScreen());
     return;
   }
-  const body = el(`<div class="bm-body"></div>`);
-  body.appendChild(renderRail());
-  body.appendChild(renderMain());
+  maybeAdvanceReview(); // may flip state.reviewMode/reviewCursor off before anything below reads them
+  const body = el(`<div class="bm-body${state.reviewMode ? " bm-body-review" : ""}"></div>`);
+  if (state.reviewMode) {
+    body.appendChild(renderReviewMain());
+  } else {
+    body.appendChild(renderRail());
+    body.appendChild(renderMain());
+  }
   body.appendChild(renderPreview());
   app.appendChild(body);
   const newGridWrap = document.getElementById("grid-wrap");
@@ -1656,6 +1776,10 @@ function renderMain() {
   const main = el(`
     <main class="bm-main">
       <div class="bm-toolbar">
+        <button class="bm-btn bm-btn-primary bm-btn-sm bm-toolbar-review" id="review-mode-btn" ${state.folder && filtered.length > 0 ? "" : "disabled"}
+          title="${filtered.length > 0 ? "Step through these files one at a time in a focused, full-size view" : "Nothing to review"}">
+          ${ICONS.eye} Review mode
+        </button>
         <div class="bm-field bm-toolbar-search">
           <label class="bm-field-label" for="search-input">Search</label>
           <div class="bm-search-input-wrap">
@@ -1711,6 +1835,7 @@ function renderMain() {
     </main>
   `);
 
+  main.querySelector("#review-mode-btn").addEventListener("click", enterReviewMode);
   const searchInput = main.querySelector("#search-input");
   searchInput.addEventListener("input", (e) => {
     state.search = e.target.value;
@@ -2075,10 +2200,73 @@ function wireFileItem(card, f, filtered) {
 // showing one of three things depending on the current selection: nothing
 // selected, exactly one file (the original single-file editor), or many files
 // (mini thumbnails + batch-aware move/tag/autorename/comment controls).
+// Plain-language readout of whatever's currently narrowing getFiltered() —
+// same underlying pieces as the toolbar's own "active filters" chips (see
+// renderMain), just joined into one line for review mode's heading instead of
+// individual removable pills, since review mode itself has no toolbar to
+// clear them from (Exit review first, then clear a filter, if that's needed).
+function reviewFilterSummary() {
+  const parts = [];
+  if (state.activeFolder) parts.push(state.activeFolder);
+  if (state.looseOnly) parts.push("Loose files");
+  if (state.untaggedOnly) parts.push("No tags");
+  parts.push(...[...state.activeTags]);
+  if (state.search) parts.push(`"${state.search}"`);
+  return parts.length > 0 ? parts.join(" + ") : "All files";
+}
+
+// Review mode's big viewer — replaces the rail + file grid (see render()).
+// Shows exactly the file at state.reviewCursor, full-size, with Previous/
+// Next/Rotate/Exit controls; the right-hand pane alongside it is still the
+// normal renderPreview()/renderPreviewSingle() output (with its own plate
+// hidden — see renderPreviewSingle's `hidePlate`).
+function renderReviewMain() {
+  const filtered = getFiltered();
+  const idx = filtered.findIndex((f) => f.path === state.reviewCursor);
+  const file = filtered[idx];
+  if (!file) {
+    // Shouldn't happen — maybeAdvanceReview already exits review mode the
+    // moment nothing matches — but fall back to something sane rather than
+    // reference a file that isn't there.
+    return el(`<main class="bm-review-main"></main>`);
+  }
+  const main = el(`
+    <main class="bm-review-main">
+      <div class="bm-review-topbar">
+        <div class="bm-review-scope">Currently reviewing: ${escapeHtml(reviewFilterSummary())}</div>
+        <div class="bm-review-controls-row">
+          <button class="bm-btn bm-btn-ghost bm-btn-sm" id="review-exit-btn" title="Exit review mode (Esc)">${ICONS.x} Exit review</button>
+          <div class="bm-review-counter">${idx + 1} of ${filtered.length}</div>
+          <div class="bm-review-nav">
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="review-rotate-btn" title="Rotate view 90° — doesn't touch the file itself">${ICONS.rotate} Rotate view</button>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="review-prev-btn" title="Previous file (←/↑)" ${idx === 0 ? "disabled" : ""}>${ICONS.chevronLeft} Previous</button>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="review-next-btn" title="Next file (→/↓)" ${idx === filtered.length - 1 ? "disabled" : ""}>Next ${ICONS.chevronRight}</button>
+          </div>
+        </div>
+      </div>
+      <div class="bm-review-plate" id="review-plate" title="Double-click to open in default app">
+        <div class="bm-rotate-frame">${renderMediaHtml(file)}</div>
+      </div>
+    </main>
+  `);
+  main.querySelector("#review-exit-btn").addEventListener("click", exitReviewMode);
+  main.querySelector("#review-rotate-btn").addEventListener("click", () => rotateFile(file));
+  main.querySelector("#review-prev-btn").addEventListener("click", () => reviewStep(-1));
+  main.querySelector("#review-next-btn").addEventListener("click", () => reviewStep(1));
+  const plate = main.querySelector("#review-plate");
+  plate.addEventListener("dblclick", () => openFile(file.path));
+  mountRotatedPlate(plate, file.rotation);
+  return main;
+}
+
 function renderPreview() {
   const files = getSelectedFiles();
   if (files.length === 0) return renderPreviewEmpty();
-  if (files.length === 1) return renderPreviewSingle(files[0]);
+  // In review mode state.selected is always pinned to exactly the file under
+  // review (see setReviewCursorState), so this is always the single-file
+  // branch — renderPreviewSingle just leaves its own plate out, since review
+  // mode's big viewer (renderReviewMain) shows that file instead.
+  if (files.length === 1) return renderPreviewSingle(files[0], { reviewMode: state.reviewMode });
   return renderPreviewMulti(files);
 }
 
@@ -2211,7 +2399,80 @@ function wireLocationField(panel) {
   if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameSelected);
 }
 
-function renderPreviewSingle(file) {
+// Builds the actual <embed>/<img> for a file — shared by the single-file
+// preview plate and review mode's big viewer (renderReviewMain), both of
+// which wrap this in a .bm-rotate-frame (see mountRotatedPlate) so the
+// rotate button's fix applies identically wherever the file shows up.
+function renderMediaHtml(file) {
+  return file.ext === ".pdf"
+    // Chromium's built-in PDF viewer (what <embed type="application/pdf">
+    // renders) honors these as URL fragment params: toolbar=0/navpanes=0
+    // drop its own download/print/menu bar, and view=Fit zooms the page to
+    // fit entirely within the plate instead of showing it at "actual size"
+    // with scrollbars — the fix for a badly-formatted/oversized PDF page.
+    ? `<embed src="${file.url}#toolbar=0&navpanes=0&view=Fit" type="application/pdf" />`
+    : `<img src="${file.url}" alt="${file.name}" />`;
+}
+
+// Rotating a portrait scan 90°/270° swaps its effective aspect ratio, so the
+// plain img/embed's own max-width/max-height:100% (sized against the plate's
+// UN-rotated box) would end up either clipped by the plate's overflow:hidden
+// or sitting tiny and off-center. Sizing the inner .bm-rotate-frame to the
+// plate's own box swapped, *then* rotating that frame, makes the media fill
+// the plate the same way it would if the file were natively that orientation.
+// Re-measured via ResizeObserver (not just once) since the plate's box isn't
+// known until layout, and can change under the reviewer's feet (window
+// resize/maximize). Only one plate is ever on screen at a time, so a single
+// tracked observer — disconnected and replaced on every mount — is enough.
+let activePlateObserver = null;
+function mountRotatedPlate(plateEl, rotation) {
+  if (activePlateObserver) {
+    activePlateObserver.disconnect();
+    activePlateObserver = null;
+  }
+  const frame = plateEl.querySelector(".bm-rotate-frame");
+  if (!frame) return;
+  const swapped = rotation === 90 || rotation === 270;
+  frame.style.transform = rotation ? `rotate(${rotation}deg)` : "";
+  const sync = () => {
+    const w = plateEl.clientWidth;
+    const h = plateEl.clientHeight;
+    frame.style.width = `${swapped ? h : w}px`;
+    frame.style.height = `${swapped ? w : h}px`;
+  };
+  sync();
+  activePlateObserver = new ResizeObserver(sync);
+  activePlateObserver.observe(plateEl);
+}
+
+function saveRotation(folder, relPath, degrees) {
+  const promise = window.api.setRotation(folder, relPath, degrees);
+  pendingMetaWrites.add(promise); // same in-flight tracking as saveFileMeta, so a refresh can't race ahead of this write
+  const forget = () => pendingMetaWrites.delete(promise);
+  promise.then(forget, forget);
+  return promise;
+}
+
+// Rotates `file` a further 90° clockwise for viewing within BillManager —
+// see the ROTATIONS_FILE comment in main.js for why this is a display-only
+// fix. Not pushed onto the undo stack like every other edit here: a wrong
+// turn costs nothing more than three more clicks to undo, so a dedicated
+// undo entry (and "Recent" activity clutter) isn't worth it for something
+// this cheap to reverse.
+async function rotateFile(file) {
+  file.rotation = (file.rotation + 90) % 360;
+  render();
+  try {
+    await saveRotation(state.folder, file.path, file.rotation);
+  } catch {
+    // Cosmetic-only — worst case it just doesn't survive the next refresh.
+  }
+}
+
+function renderPreviewSingle(file, opts = {}) {
+  // Review mode's big viewer (renderReviewMain) shows this file's plate
+  // instead — showing it twice at once would be redundant screen space.
+  const hidePlate = !!opts.reviewMode;
   const panel = el(`
     <aside class="bm-preview">
       <div class="bm-preview-header">
@@ -2226,18 +2487,13 @@ function renderPreviewSingle(file) {
           <button class="bm-btn bm-btn-secondary bm-btn-maroon bm-btn-sm" id="delete-btn">${ICONS.trash} Delete file</button>
         </div>
       </div>
-      <div class="bm-preview-plate" id="preview-frame-wrap" title="Double-click to open in default app">
-        ${
-          file.ext === ".pdf"
-            // Chromium's built-in PDF viewer (what <embed type="application/pdf">
-            // renders) honors these as URL fragment params: toolbar=0/navpanes=0
-            // drop its own download/print/menu bar, and view=Fit zooms the page to
-            // fit entirely within the plate instead of showing it at "actual size"
-            // with scrollbars — the fix for a badly-formatted/oversized PDF page.
-            ? `<embed src="${file.url}#toolbar=0&navpanes=0&view=Fit" type="application/pdf" />`
-            : `<img src="${file.url}" alt="${file.name}" />`
-        }
-      </div>
+      ${
+        hidePlate
+          ? ""
+          : `<div class="bm-preview-plate" id="preview-frame-wrap" title="Double-click to open in default app">
+        <div class="bm-rotate-frame">${renderMediaHtml(file)}</div>
+      </div>`
+      }
       <div class="bm-preview-scroll">
         ${renderLocationField(file)}
         <div>
@@ -2297,7 +2553,11 @@ ${escapeHtml(c)}</textarea>
   `);
 
   panel.querySelector("#open-file-btn").addEventListener("click", () => openFile(file.path));
-  panel.querySelector("#preview-frame-wrap").addEventListener("dblclick", () => openFile(file.path));
+  const plate = panel.querySelector("#preview-frame-wrap");
+  if (plate) {
+    plate.addEventListener("dblclick", () => openFile(file.path));
+    mountRotatedPlate(plate, file.rotation);
+  }
   wireLocationField(panel);
   const tagSelect = panel.querySelector("#tag-select");
   if (tagSelect) {
