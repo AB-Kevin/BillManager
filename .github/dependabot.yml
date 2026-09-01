@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Keep GitHub Actions (actions/checkout, actions/setup-node, etc.) current.
+  # Opens a PR automatically whenever a used action cuts a new version —
+  # including major-version bumps like the node20->node24 runtime jump.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Keep npm dependencies (electron, electron-builder, ...) current.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
