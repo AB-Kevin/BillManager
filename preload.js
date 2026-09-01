@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld("api", {
   renameFile: (folder, filename, newName) => ipcRenderer.invoke("rename-file", folder, filename, newName),
   autorenameFile: (folder, filename) => ipcRenderer.invoke("autorename-file", folder, filename),
   autorenameFiles: (folder, relPaths) => ipcRenderer.invoke("autorename-files-batch", folder, relPaths),
+  autosaveFile: (folder, filename, destFolder) => ipcRenderer.invoke("autosave-file", folder, filename, destFolder),
+  autosaveFiles: (folder, relPaths, destFolder) =>
+    ipcRenderer.invoke("autosave-files-batch", folder, relPaths, destFolder),
+  undoAutosave: (destFull) => ipcRenderer.invoke("undo-autosave", destFull),
+  getAutosaveFolder: () => ipcRenderer.invoke("get-autosave-folder"),
+  setAutosaveFolder: (folder) => ipcRenderer.invoke("set-autosave-folder", folder),
   nudgeWindowFocus: () => ipcRenderer.invoke("nudge-window-focus"),
   openFile: (folder, filename) => ipcRenderer.invoke("open-file", folder, filename),
   getTagConfig: (folder) => ipcRenderer.invoke("get-tag-config", folder),

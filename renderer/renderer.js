@@ -129,8 +129,9 @@ const state = {
   commenterName: "", // per-device name signed onto new comments — see main.js's settings.json
   commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
-  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme)
+  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autosave folder)
   theme: "light", // "light" | "dark" | "midnight" — per-device, see main.js's settings.json
+  autosaveFolder: "", // per-device absolute folder the Autosave button files things into — see main.js's settings.json; asked for on first use, changeable from Options
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
   reviewMode: false, // true while review mode's full-size viewer replaces the rail+grid — see enterReviewMode
@@ -819,6 +820,96 @@ async function autorenameSelected() {
   if (errors.length > 0) {
     alert(
       `Renamed ${moved.length} of ${paths.length} file(s). ${errors.length} failed:\n\n` +
+        errors.map((e) => `• ${e.path}: ${e.error}`).join("\n")
+    );
+  }
+}
+
+// Persists a newly chosen autosave folder to per-device settings (see main.js's
+// settings.json) and updates state immediately — same optimistic-update-then-
+// persist order as setTheme.
+async function setAutosaveFolder(folder) {
+  state.autosaveFolder = folder;
+  render();
+  await window.api.setAutosaveFolder(folder);
+}
+
+// Resolves the per-device autosave destination folder, asking the user to
+// choose one via the native OS folder picker the first time the Autosave
+// button is used and remembering it from then on (also reachable from the
+// Options dialog's "Change" button to update it later). Returns null if
+// there's no folder set yet and the user cancels the picker, so callers can
+// bail out cleanly instead of autosaving nowhere.
+async function ensureAutosaveFolder() {
+  if (state.autosaveFolder) return state.autosaveFolder;
+  const chosen = await window.api.selectFolder();
+  if (!chosen) return null;
+  await setAutosaveFolder(chosen);
+  return chosen;
+}
+
+// Autosaves every selected file: a "Save As", not a Save — it copies the file
+// under a fresh yyyyMMdd_HHmmss name (same naming scheme as Autorename) into
+// the per-device autosave folder (see ensureAutosaveFolder) and leaves the
+// original completely untouched in the catalog. Selection is left as-is
+// since nothing about the original file changed. Undo simply deletes the
+// copy that was created — there's nothing to restore, since the original was
+// never moved or renamed.
+async function autosaveSelected() {
+  const files = getSelectedFiles();
+  if (files.length === 0 || !state.folder) return;
+  const destFolder = await ensureAutosaveFolder();
+  if (!destFolder) return;
+
+  if (files.length === 1) {
+    const file = files[0];
+    const prevName = file.name;
+    try {
+      const result = await window.api.autosaveFile(state.folder, file.path, destFolder);
+      if (result && result.error) {
+        alert(result.error);
+        return;
+      }
+      const destFull = result.destFull;
+      pushUndo(`Autosave "${prevName}"`, async () => {
+        const r = await window.api.undoAutosave(destFull);
+        if (r && r.error) throw new Error(r.error);
+      });
+    } catch (e) {
+      alert(`Couldn't autosave "${prevName}": ${e.message || e}`);
+    } finally {
+      // Only matters if destFolder happens to be inside the catalog folder —
+      // otherwise nothing about the listing changed, and this is a no-op.
+      await refreshFiles();
+    }
+    return;
+  }
+
+  const paths = files.map((f) => f.path);
+  let saved = [];
+  let errors = [];
+  try {
+    const result = await window.api.autosaveFiles(state.folder, paths, destFolder);
+    saved = (result && result.saved) || [];
+    errors = (result && result.errors) || [];
+  } catch (e) {
+    errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
+  } finally {
+    await refreshFiles();
+  }
+  if (saved.length > 0) {
+    pushUndo(`Autosave ${saved.length} files`, async () => {
+      const errs = [];
+      for (const { source, destFull } of saved) {
+        const r = await window.api.undoAutosave(destFull);
+        if (r && r.error) errs.push(`${source}: ${r.error}`);
+      }
+      if (errs.length > 0) throw new Error(`Some copies couldn't be undone:\n${errs.join("\n")}`);
+    });
+  }
+  if (errors.length > 0) {
+    alert(
+      `Autosaved ${saved.length} of ${paths.length} file(s). ${errors.length} failed:\n\n` +
         errors.map((e) => `• ${e.path}: ${e.error}`).join("\n")
     );
   }
@@ -2382,6 +2473,7 @@ function renderLocationField(file) {
               .join("")}
           </select>
           <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autosave-btn" title="Save a renamed copy to your autosave folder, leaving this file untouched (set the folder the first time, or in Options)">${ICONS.download} Autosave</button>
         </div>
       </div>
     </div>`;
@@ -2397,6 +2489,8 @@ function wireLocationField(panel) {
   }
   const autorenameBtn = panel.querySelector("#autorename-btn");
   if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameSelected);
+  const autosaveBtn = panel.querySelector("#autosave-btn");
+  if (autosaveBtn) autosaveBtn.addEventListener("click", autosaveSelected);
 }
 
 // Builds the actual <embed>/<img> for a file — shared by the single-file
@@ -3047,6 +3141,13 @@ function renderSettingsModal() {
             </div>
             <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-name-btn">Change</button>
           </div>
+          <div class="bm-settings-row">
+            <div>
+              <div class="bm-settings-row-label">Autosave folder</div>
+              <div class="bm-settings-row-value">${escapeHtml(state.autosaveFolder || "Not set")}</div>
+            </div>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-autosave-btn">Change</button>
+          </div>
         </div>
         <div class="bm-modal-footer">
           <button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm" id="settings-modal-close">Close</button>
@@ -3065,6 +3166,10 @@ function renderSettingsModal() {
   overlay.querySelector("#settings-change-name-btn").addEventListener("click", () => {
     state.settingsModalOpen = false;
     openCommenterNameModal();
+  });
+  overlay.querySelector("#settings-change-autosave-btn").addEventListener("click", async () => {
+    const chosen = await window.api.selectFolder();
+    if (chosen) await setAutosaveFolder(chosen);
   });
 
   return overlay;
@@ -3156,6 +3261,7 @@ function renderCommenterNameModal() {
   state.commenterName = (await window.api.getCommenterName()) || "";
   state.commenterNameDraft = state.commenterName;
   if (!state.commenterName) state.commenterModalOpen = true;
+  state.autosaveFolder = (await window.api.getAutosaveFolder()) || "";
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   window.api.onRollbackStatus((status) => {
     state.rollbackStatus = status;

@@ -395,6 +395,14 @@ ipcMain.handle("get-theme", () => readSettings().theme || null);
 
 ipcMain.handle("set-theme", (event, theme) => writeSettings({ theme }));
 
+// Per-device destination for the Autosave button (see autosaveOneFile below)
+// — an absolute folder outside the catalog, chosen once via the native folder
+// picker the first time Autosave is used and remembered from then on. Also
+// changeable any time from the Options dialog.
+ipcMain.handle("get-autosave-folder", () => readSettings().autosaveFolder || null);
+
+ipcMain.handle("set-autosave-folder", (event, folder) => writeSettings({ autosaveFolder: folder }));
+
 // Per-file rotation, for review mode's "fix a sideways/upside-down scan"
 // button (see the renderer's rotateFile). This is a view-only fix — there's
 // no safe, dependency-free way to physically re-encode a rotated JPG/PNG or
@@ -704,6 +712,103 @@ function autorenameFilesBatch(folder, relPaths) {
 
 ipcMain.handle("autorename-files-batch", async (event, folder, relPaths) => {
   return autorenameFilesBatch(folder, relPaths);
+});
+
+// The Autosave button is a "Save As": it copies a file under a fresh
+// yyyyMMdd_HHmmss timestamp name — same naming scheme as autorenameOneFile —
+// into `destFolder`, the per-device autosave folder (see
+// get/set-autosave-folder above), and leaves the original completely
+// untouched in the catalog. Collisions are checked against destFolder, not
+// the file's own folder, since that's where the new name actually has to be
+// unique. Returns destFull — the copy's new absolute path — so the renderer
+// can undo by deleting just that copy (see undo-autosave below).
+function autosaveOneFile(folder, relPath, destFolder) {
+  const ext = path.extname(relPath);
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  let name = `${stamp}${ext}`;
+  let n = 1;
+  while (fs.existsSync(path.join(destFolder, name))) {
+    name = `${stamp}_${n}${ext}`;
+    n++;
+  }
+
+  const srcFull = path.join(folder, relPath);
+  const destFull = path.join(destFolder, name);
+  try {
+    fs.mkdirSync(destFolder, { recursive: true });
+    fs.copyFileSync(srcFull, destFull);
+    // A plain copy carries over the source's own last-modified time (same as
+    // an Explorer copy-paste), which would leave the copy showing the
+    // original bill's old date despite its new timestamped filename. Stamp
+    // it to the moment of the autosave instead, so the two agree.
+    fs.utimesSync(destFull, now, now);
+  } catch (e) {
+    return { error: `Couldn't autosave "${path.basename(relPath)}": ${e.message}` };
+  }
+  return { destFull, name };
+}
+
+ipcMain.handle("autosave-file", async (event, folder, relPath, destFolder) => {
+  return autosaveOneFile(folder, relPath, destFolder);
+});
+
+// Autosaves many files in one action, mirroring autorenameFilesBatch: all
+// copies share the same stamp, so each gets a " (n)" suffix (1-indexed in
+// selection order) to keep them from colliding with each other at the
+// destination. Each file is attempted independently, so one locked/in-use
+// file doesn't block the rest.
+function autosaveFilesBatch(folder, relPaths, destFolder) {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  const saved = [];
+  const errors = [];
+  try {
+    fs.mkdirSync(destFolder, { recursive: true });
+  } catch (e) {
+    return { saved, errors: relPaths.map((p) => ({ path: p, error: `Couldn't reach the autosave folder: ${e.message}` })) };
+  }
+  relPaths.forEach((relPath, i) => {
+    const ext = path.extname(relPath);
+    let name = `${stamp} (${i + 1})${ext}`;
+    let n = 1;
+    while (fs.existsSync(path.join(destFolder, name))) {
+      name = `${stamp} (${i + 1})_${n}${ext}`;
+      n++;
+    }
+
+    const srcFull = path.join(folder, relPath);
+    const destFull = path.join(destFolder, name);
+    try {
+      fs.copyFileSync(srcFull, destFull);
+      // See the matching comment in autosaveOneFile above.
+      fs.utimesSync(destFull, now, now);
+      saved.push({ source: relPath, destFull, name });
+    } catch (e) {
+      errors.push({ path: relPath, error: `Couldn't autosave "${path.basename(relPath)}": ${e.message}` });
+    }
+  });
+  return { saved, errors };
+}
+
+ipcMain.handle("autosave-files-batch", async (event, folder, relPaths, destFolder) => {
+  return autosaveFilesBatch(folder, relPaths, destFolder);
+});
+
+// Undoes an Autosave. Since autosaveOneFile/autosaveFilesBatch only ever
+// create a new copy — the original file in the catalog is never touched —
+// undoing means deleting that copy outright, not restoring anything.
+ipcMain.handle("undo-autosave", async (event, destFull) => {
+  try {
+    fs.unlinkSync(destFull);
+  } catch (e) {
+    return { error: `Couldn't undo autosave: ${e.message}` };
+  }
+  return true;
 });
 
 // Windows/Chromium quirk: after the DOM subtree holding a native <select> is torn

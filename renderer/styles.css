@@ -391,7 +391,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 
 /* ---- Form fields ---- */
 .bm-field { display: flex; flex-direction: column; gap: 6px; }
-.bm-field-row { display: flex; align-items: center; gap: var(--space-2); }
+.bm-field-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .bm-field-row .bm-select { flex: 1; min-width: 0; }
 .bm-field-row .bm-btn { flex-shrink: 0; }
 .bm-field-label {
