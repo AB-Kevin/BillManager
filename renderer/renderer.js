@@ -1428,8 +1428,14 @@ function enterReviewMode() {
   state.preReviewSelected = new Set(state.selected);
   state.preReviewAnchor = state.selectAnchor;
   state.reviewMode = true;
-  state.reviewLastIndex = 0;
-  setReviewCursorState(filtered[0].path);
+  // Start from whatever's currently selected (navCursor tracks the most
+  // recent click/arrow-nav target, selectAnchor a plain/ctrl-click without
+  // subsequent arrow nav) if it's still in the filtered list, else the top.
+  const startPath = state.navCursor || state.selectAnchor;
+  const startIdx = startPath ? filtered.findIndex((f) => f.path === startPath) : -1;
+  const idx = startIdx === -1 ? 0 : startIdx;
+  state.reviewLastIndex = idx;
+  setReviewCursorState(filtered[idx].path);
   render();
 }
 
