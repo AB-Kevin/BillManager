@@ -55,6 +55,6 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
-    "exiftool-vendored": "^37.1.0"
+    "exiftool-vendored": "^37.2.0"
   }
 }
