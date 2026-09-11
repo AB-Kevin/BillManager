@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
@@ -11,16 +11,67 @@ const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg", ".png"];
 
 let mainWindow;
 
+// Matches styles.css's --surface-page/--text-body for each theme (see
+// [data-theme="dark"]/[data-theme="midnight"]) -- used for the BrowserWindow's
+// own backgroundColor (painted before any HTML/CSS loads, so a dark/midnight
+// user gets that color from the very first frame instead of a flash of white
+// while renderer.js's init() reads settings and calls applyTheme()) and, on
+// Windows, the native titleBarOverlay's button colors -- see resolveTitleBarOverlay.
+const THEME_BACKGROUNDS = { light: "#FFFFFF", dark: "#1b1c1e", midnight: "#232527" };
+const THEME_OVERLAY_SYMBOLS = { light: "#231f20", dark: "#ececec", midnight: "#e7e9e8" };
+
+// "system" (the default -- see get-theme's own null fallback and the
+// renderer's init()) has no CSS/background of its own; it resolves to plain
+// light or dark by way of the OS's own preference, mirrored one-to-one
+// (never midnight, which is only ever reached by an explicit choice -- see
+// renderer.js's own resolveTheme()). nativeTheme.shouldUseDarkColors is
+// Electron's synchronous read of that OS preference, usable here in the
+// main process before any window/renderer exists yet, unlike the
+// renderer's window.matchMedia equivalent. readSettings() is defined
+// further down this file but usable here regardless -- function
+// declarations hoist.
+function resolveThemeName(pref) {
+  return pref === "system" || !pref ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : pref;
+}
+
+function resolveThemeBackground(pref) {
+  return THEME_BACKGROUNDS[resolveThemeName(pref)] || THEME_BACKGROUNDS.light;
+}
+
+// Windows only -- see createWindow()'s IS_WINDOWS branch. height:44 matches
+// the custom titlebar's own height (styles.css's .bm-titlebar) so the native
+// buttons sit centered in it rather than a mismatched OS-default size.
+function resolveTitleBarOverlay(pref) {
+  const theme = resolveThemeName(pref);
+  return { color: THEME_BACKGROUNDS[theme] || THEME_BACKGROUNDS.light, symbolColor: THEME_OVERLAY_SYMBOLS[theme] || THEME_OVERLAY_SYMBOLS.light, height: 44 };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: resolveThemeBackground(readSettings().theme),
     autoHideMenuBar: true,
-    frame: false,
     icon: path.join(__dirname, "build", "icon.ico"),
+    // Native OS window controls inset into our own custom title bar, on
+    // whichever platform offers a way to do that -- everything else about
+    // the custom bar (the drag region, the title text) is unchanged and
+    // still ours; only the three buttons themselves become the OS's, and
+    // renderTitlebar()'s IS_MAC/IS_WINDOWS checks skip drawing its own
+    // redundant ones wherever this applies. macOS: real traffic lights via
+    // hiddenInset. Windows: titleBarOverlay -- real Fluent caption buttons
+    // (Snap Layouts included) themed to match the current app theme, kept
+    // in sync on theme changes by the set-theme handler and the
+    // nativeTheme "updated" listener below. Anywhere else (Linux), neither
+    // API exists, so frame:false + our own drawn buttons stays exactly as
+    // it was before any of this.
+    ...(IS_MAC
+      ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 14 } }
+      : IS_WINDOWS
+        ? { titleBarStyle: "hidden", titleBarOverlay: resolveTitleBarOverlay(readSettings().theme) }
+        : { frame: false }),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -36,6 +87,17 @@ function createWindow() {
   mainWindow.on("maximize", () => sendWindowState());
   mainWindow.on("unmaximize", () => sendWindowState());
 }
+
+// Keeps Windows's native titleBarOverlay in sync with OS-level dark/light
+// changes while the app is running (e.g. Windows switching modes at
+// sunset), mirroring the renderer's own matchMedia listener -- but only
+// when the stored preference is "system" (or unset); an explicit
+// Light/Dark/Midnight choice must never be overridden by this.
+nativeTheme.on("updated", () => {
+  if (!IS_WINDOWS || !mainWindow) return;
+  const pref = readSettings().theme;
+  if (pref === "system" || !pref) mainWindow.setTitleBarOverlay(resolveTitleBarOverlay(pref));
+});
 
 function sendWindowState() {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -102,6 +164,7 @@ autoUpdater.forceDevUpdateConfig = true;
 // in-app, we hand the user off to the GitHub release page to grab the new
 // .dmg themselves.
 const IS_MAC = process.platform === "darwin";
+const IS_WINDOWS = process.platform === "win32";
 const REPO_OWNER = "AB-Kevin";
 const REPO_NAME = "BillManager";
 const REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
@@ -393,7 +456,13 @@ ipcMain.handle("set-commenter-name", (event, name) => writeSettings({ commenterN
 
 ipcMain.handle("get-theme", () => readSettings().theme || null);
 
-ipcMain.handle("set-theme", (event, theme) => writeSettings({ theme }));
+ipcMain.handle("set-theme", (event, theme) => {
+  const next = writeSettings({ theme });
+  // Keep Windows's native titleBarOverlay buttons matching the theme the
+  // moment it's changed, not just at next launch -- see resolveTitleBarOverlay.
+  if (IS_WINDOWS && mainWindow) mainWindow.setTitleBarOverlay(resolveTitleBarOverlay(theme));
+  return next;
+});
 
 // Per-device destination for the Autosave button (see autosaveOneFile below)
 // — an absolute folder outside the catalog, chosen once via the native folder

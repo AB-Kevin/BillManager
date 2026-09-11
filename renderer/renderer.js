@@ -130,7 +130,7 @@ const state = {
   commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
   settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autosave folder)
-  theme: "light", // "light" | "dark" | "midnight" — per-device, see main.js's settings.json
+  theme: "system", // "system" | "light" | "dark" | "midnight" — per-device, see main.js's settings.json and resolveTheme()
   autosaveFolder: "", // per-device absolute folder the Autosave button files things into — see main.js's settings.json; asked for on first use, changeable from Options
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
@@ -1587,26 +1587,49 @@ function renderLoadingScreen() {
   `);
 }
 
+// True on macOS/Windows, computed once (not per-render): navigator.platform
+// is a plain web API, available in the renderer with no preload/IPC surface
+// of its own even under contextIsolation. IS_MAC is set as a class on <html>
+// immediately (not deferred to init()) for the same reason applyTheme() runs
+// before the first render() -- CSS keyed off .is-mac (see styles.css's
+// .is-mac .bm-titlebar-brand) needs to be correct from the very first paint.
+const IS_MAC = /Mac/i.test(navigator.platform);
+const IS_WINDOWS = /Win/i.test(navigator.platform);
+document.documentElement.classList.toggle("is-mac", IS_MAC);
+
 // ---- Title bar ----
-// The window is frameless (see main.js) so the app draws its own chrome and
-// wires the three controls to real window operations over IPC.
+// The window is frameless only where neither OS offers a native alternative
+// (Linux) -- there, the app draws its own chrome and wires the three
+// controls to real window operations over IPC. On macOS, main.js instead
+// uses titleBarStyle:"hiddenInset" (real traffic lights); on Windows,
+// titleBarStyle:"hidden" + titleBarOverlay (real Fluent caption buttons,
+// Snap Layouts included) -- either way the OS insets native buttons into
+// this same custom bar, so the hand-drawn ones would be redundant (and, on
+// Windows, would literally overlap the native ones in the same top-right
+// corner) and are skipped entirely; only the drag region and title text are
+// still ours.
 function renderTitlebar() {
+  const hasNativeButtons = IS_MAC || IS_WINDOWS;
   const bar = el(`
     <div class="bm-titlebar">
       <div class="bm-titlebar-brand">
         ${appMark(18)}
         <span class="bm-titlebar-title">BillManager</span>
       </div>
-      <div class="bm-titlebar-controls">
+      ${
+        hasNativeButtons
+          ? ""
+          : `<div class="bm-titlebar-controls">
         <button class="bm-titlebar-btn" id="win-minimize" title="Minimize">${ICONS.winMinimize}</button>
         <button class="bm-titlebar-btn" id="win-maximize" title="${state.windowMaximized ? "Restore" : "Maximize"}">${state.windowMaximized ? ICONS.winRestore : ICONS.winMaximize}</button>
         <button class="bm-titlebar-btn bm-titlebar-close" id="win-close" title="Close">${ICONS.winClose}</button>
-      </div>
+      </div>`
+      }
     </div>
   `);
-  bar.querySelector("#win-minimize").addEventListener("click", () => window.api.windowMinimize());
-  bar.querySelector("#win-maximize").addEventListener("click", () => window.api.windowMaximizeToggle());
-  bar.querySelector("#win-close").addEventListener("click", () => window.api.windowClose());
+  bar.querySelector("#win-minimize")?.addEventListener("click", () => window.api.windowMinimize());
+  bar.querySelector("#win-maximize")?.addEventListener("click", () => window.api.windowMaximizeToggle());
+  bar.querySelector("#win-close")?.addEventListener("click", () => window.api.windowClose());
   return bar;
 }
 
@@ -3098,17 +3121,33 @@ function closeSettingsModal() {
 }
 
 const THEME_CHOICES = [
+  { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
   { value: "midnight", label: "Midnight" },
 ];
 
+// "system" (the default -- see init()'s getTheme() fallback) has no CSS
+// palette of its own -- it maps 1:1 onto plain light or dark, matching the
+// OS's own preference, and never resolves to midnight (that's only ever
+// reached by an explicit choice). matchMedia's "prefers-color-scheme: dark"
+// is the renderer-side read of that OS preference -- see main.js's
+// nativeTheme.shouldUseDarkColors for the equivalent used pre-paint, in the
+// main process, before this window (and so this API) exists yet.
+function resolveTheme(pref) {
+  if (pref === "system" || !pref) return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return pref;
+}
+
 // Sets the <html data-theme> attribute the whole stylesheet keys off of (see
 // the [data-theme="dark"]/[data-theme="midnight"] blocks at the top of
-// styles.css) — "light" matches no block, which is exactly right since :root
-// already *is* the light theme.
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme || "light");
+// styles.css) — resolved "light" matches no block, which is exactly right
+// since :root already *is* the light theme. Takes the raw preference
+// (including "system") and resolves it -- state.theme itself keeps the raw
+// preference, so the toggle can still show "System" as the active choice
+// rather than whichever theme it happened to resolve to.
+function applyTheme(pref) {
+  document.documentElement.setAttribute("data-theme", resolveTheme(pref));
 }
 
 async function setTheme(theme) {
@@ -3260,8 +3299,14 @@ function renderCommenterNameModal() {
   // Applied before the first render (and before any other await) so the
   // loading screen itself paints in the right theme instead of flashing
   // light-then-switching.
-  state.theme = (await window.api.getTheme()) || "light";
+  state.theme = (await window.api.getTheme()) || "system";
   applyTheme(state.theme);
+  // Keeps "System" in sync with the OS while the app stays open, not just at
+  // launch -- e.g. macOS switching to Dark Mode at sunset. Guarded so it
+  // never overrides an explicit Light/Dark/Midnight choice.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (state.theme === "system") applyTheme(state.theme);
+  });
   render(); // paint the loading screen immediately, before any of the awaits below
   state.appVersion = await window.api.getAppVersion();
   state.commenterName = (await window.api.getCommenterName()) || "";

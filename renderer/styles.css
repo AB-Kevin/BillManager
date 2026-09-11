@@ -199,6 +199,13 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-titlebar-btn:hover { background: var(--surface-card-alt); }
 .bm-titlebar-btn.bm-titlebar-close:hover { background: #c0392b; color: #fff; }
 
+/* macOS only: renderTitlebar() skips its own draw close/minimize/maximize
+   buttons there in favor of the real native traffic lights main.js insets
+   into this bar (titleBarStyle:"hiddenInset", trafficLightPosition {x:16,
+   y:14}) -- push the title text clear of that ~16-70px native cluster
+   instead of the plain 14px every other platform uses. */
+.is-mac .bm-titlebar-brand { padding-left: 78px; }
+
 /* ---- App body: rail / main / preview ---- */
 /* grid-template-rows: minmax(0, 1fr) (not the implicit "auto") is what makes
    the row's height a hard bound instead of growing to fit its tallest child's
