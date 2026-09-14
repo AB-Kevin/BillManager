@@ -129,15 +129,15 @@ const state = {
   commenterName: "", // per-device name signed onto new comments — see main.js's settings.json
   commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
-  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autosave folder)
+  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autoexport folder)
   theme: "system", // "system" | "light" | "dark" | "midnight" — per-device, see main.js's settings.json and resolveTheme()
-  autosaveFolder: "", // per-device absolute folder the Autosave button files things into — see main.js's settings.json; asked for on first use, changeable from Options
+  autoexportFolder: "", // per-device absolute folder the Autoexport button files things into — see main.js's settings.json; asked for on first use, changeable from Options
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
   reviewMode: false, // true while review mode's full-size viewer replaces the rail+grid — see enterReviewMode
   reviewCursor: null, // relative path of the file currently shown in review mode
   reviewLastIndex: 0, // index reviewCursor was last found at in getFiltered() — see maybeAdvanceReview
-  preReviewSelected: null, // Set snapshot of state.selected from just before review mode started, restored on exit
+  preReviewSelected: null, // Set snapshot of state.selected from just before review mode started — fallback for exitReviewModeState when there's no reviewCursor file to select instead
   preReviewAnchor: null, // ditto for state.selectAnchor
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
@@ -825,58 +825,61 @@ async function autorenameSelected() {
   }
 }
 
-// Persists a newly chosen autosave folder to per-device settings (see main.js's
-// settings.json) and updates state immediately — same optimistic-update-then-
-// persist order as setTheme.
-async function setAutosaveFolder(folder) {
-  state.autosaveFolder = folder;
+// Persists a newly chosen autoexport folder to per-device settings (see
+// main.js's settings.json) and updates state immediately — same optimistic-
+// update-then-persist order as setTheme.
+async function setAutoexportFolder(folder) {
+  state.autoexportFolder = folder;
   render();
-  await window.api.setAutosaveFolder(folder);
+  await window.api.setAutoexportFolder(folder);
 }
 
-// Resolves the per-device autosave destination folder, asking the user to
-// choose one via the native OS folder picker the first time the Autosave
+// Resolves the per-device autoexport destination folder, asking the user to
+// choose one via the native OS folder picker the first time the Autoexport
 // button is used and remembering it from then on (also reachable from the
 // Options dialog's "Change" button to update it later). Returns null if
 // there's no folder set yet and the user cancels the picker, so callers can
-// bail out cleanly instead of autosaving nowhere.
-async function ensureAutosaveFolder() {
-  if (state.autosaveFolder) return state.autosaveFolder;
+// bail out cleanly instead of exporting nowhere.
+async function ensureAutoexportFolder() {
+  if (state.autoexportFolder) return state.autoexportFolder;
   const chosen = await window.api.selectFolder();
   if (!chosen) return null;
-  await setAutosaveFolder(chosen);
+  await setAutoexportFolder(chosen);
   return chosen;
 }
 
-// Autosaves every selected file: a "Save As", not a Save — it copies the file
-// under a fresh yyyyMMdd_HHmmss name (same naming scheme as Autorename) into
-// the per-device autosave folder (see ensureAutosaveFolder) and leaves the
-// original completely untouched in the catalog. Selection is left as-is
-// since nothing about the original file changed. Undo simply deletes the
-// copy that was created — there's nothing to restore, since the original was
-// never moved or renamed.
-async function autosaveSelected() {
+// Autoexports every selected file: a "Save As", not a Save — it writes the
+// file under a fresh yyyyMMdd_HHmmss name (same naming scheme as Autorename)
+// into the per-device autoexport folder (see ensureAutoexportFolder) and
+// leaves the original completely untouched in the catalog. The exported copy
+// is always a PDF — a JPG/PNG source gets wrapped into one on the main-
+// process side (see writeAutoexportCopy in main.js) — so autoexporting a
+// mix of scans and photos still produces a folder of nothing but PDFs.
+// Selection is left as-is since nothing about the original file changed.
+// Undo simply deletes the copy that was created — there's nothing to
+// restore, since the original was never moved or renamed.
+async function autoexportSelected() {
   const files = getSelectedFiles();
   if (files.length === 0 || !state.folder) return;
-  const destFolder = await ensureAutosaveFolder();
+  const destFolder = await ensureAutoexportFolder();
   if (!destFolder) return;
 
   if (files.length === 1) {
     const file = files[0];
     const prevName = file.name;
     try {
-      const result = await window.api.autosaveFile(state.folder, file.path, destFolder);
+      const result = await window.api.autoexportFile(state.folder, file.path, destFolder);
       if (result && result.error) {
         alert(result.error);
         return;
       }
       const destFull = result.destFull;
-      pushUndo(`Autosave "${prevName}"`, async () => {
-        const r = await window.api.undoAutosave(destFull);
+      pushUndo(`Autoexport "${prevName}"`, async () => {
+        const r = await window.api.undoAutoexport(destFull);
         if (r && r.error) throw new Error(r.error);
       });
     } catch (e) {
-      alert(`Couldn't autosave "${prevName}": ${e.message || e}`);
+      alert(`Couldn't autoexport "${prevName}": ${e.message || e}`);
     } finally {
       // Only matters if destFolder happens to be inside the catalog folder —
       // otherwise nothing about the listing changed, and this is a no-op.
@@ -889,7 +892,7 @@ async function autosaveSelected() {
   let saved = [];
   let errors = [];
   try {
-    const result = await window.api.autosaveFiles(state.folder, paths, destFolder);
+    const result = await window.api.autoexportFiles(state.folder, paths, destFolder);
     saved = (result && result.saved) || [];
     errors = (result && result.errors) || [];
   } catch (e) {
@@ -898,10 +901,10 @@ async function autosaveSelected() {
     await refreshFiles();
   }
   if (saved.length > 0) {
-    pushUndo(`Autosave ${saved.length} files`, async () => {
+    pushUndo(`Autoexport ${saved.length} files`, async () => {
       const errs = [];
       for (const { source, destFull } of saved) {
-        const r = await window.api.undoAutosave(destFull);
+        const r = await window.api.undoAutoexport(destFull);
         if (r && r.error) errs.push(`${source}: ${r.error}`);
       }
       if (errs.length > 0) throw new Error(`Some copies couldn't be undone:\n${errs.join("\n")}`);
@@ -909,7 +912,7 @@ async function autosaveSelected() {
   }
   if (errors.length > 0) {
     alert(
-      `Autosaved ${saved.length} of ${paths.length} file(s). ${errors.length} failed:\n\n` +
+      `Autoexported ${saved.length} of ${paths.length} file(s). ${errors.length} failed:\n\n` +
         errors.map((e) => `• ${e.path}: ${e.error}`).join("\n")
     );
   }
@@ -1441,11 +1444,22 @@ function enterReviewMode() {
 
 // Pure state mutation, no render() — shared by exitReviewMode (a user action,
 // which does need to render) and maybeAdvanceReview (called from inside
-// render() itself, where a nested render() would recurse).
+// render() itself, where a nested render() would recurse). Selects whichever
+// file was actually on screen when review mode ended (state.reviewCursor) —
+// not preReviewSelected/preReviewAnchor's original pre-review selection —
+// since Prev/Next during review can leave the reviewer several files away
+// from where they started; that snapshot only serves as a fallback for when
+// there's no reviewCursor to return to (e.g. the filtered list went empty).
 function exitReviewModeState() {
+  const exitedPath = state.reviewCursor;
   state.reviewMode = false;
-  state.selected = state.preReviewSelected || new Set();
-  state.selectAnchor = state.preReviewAnchor || null;
+  if (exitedPath) {
+    state.selected = new Set([exitedPath]);
+    state.selectAnchor = exitedPath;
+  } else {
+    state.selected = state.preReviewSelected || new Set();
+    state.selectAnchor = state.preReviewAnchor || null;
+  }
   state.navCursor = state.selectAnchor;
   state.reviewCursor = null;
   state.preReviewSelected = null;
@@ -1453,8 +1467,12 @@ function exitReviewModeState() {
 }
 
 function exitReviewMode() {
+  const exitedPath = state.reviewCursor;
   exitReviewModeState();
   render();
+  // Highlighting it (done above) is not enough if it was scrolled out of view
+  // while the grid was hidden behind review mode's full-screen plate.
+  if (exitedPath) scrollCardIntoView(exitedPath);
 }
 
 // Points review at `path`, keeping state.selected (and hence the right-hand
@@ -1522,6 +1540,64 @@ function el(html) {
   return t.content.firstChild;
 }
 
+// Tracks which file's #review-plate is currently live in the DOM (and at what
+// rotation), so render() can tell whether the plate it's about to rebuild is
+// actually still showing the same thing. Reset to null whenever the plate is
+// torn down (leaving review mode, or a full rebuild for any other reason) so
+// a later match can't be mistaken for a stale one.
+let liveReviewPlate = null;
+
+// render() normally tears down and rebuilds the entire #app subtree, which
+// for review mode means destroying and recreating #review-plate's <embed>/
+// <img> — for a PDF that kills Chromium's PDF viewer plugin instance and
+// with it whatever zoom/scroll the reviewer had set, resetting to "fit page"
+// at the top on every unrelated action (adding a comment, toggling a tag,
+// rotating the view). When the file under review — and its rotation, unless
+// this call is the rotate itself — hasn't changed since the plate now on
+// screen was built, refresh everything else that might have changed (the
+// topbar's counter/prev-next state, the right-hand tags/comments pane) in
+// place instead, and leave the plate untouched. Returns true if it handled
+// the render this way, false if the caller still needs to do a full rebuild
+// (entering review mode, stepping to another file, or exiting it).
+function updateReviewInPlace() {
+  if (state.tagModalOpen || state.aboutOpen || state.settingsModalOpen || state.commenterModalOpen) return false;
+  if (!liveReviewPlate) return false;
+  const plateEl = document.getElementById("review-plate");
+  if (!plateEl) return false;
+  const filtered = getFiltered();
+  const idx = filtered.findIndex((f) => f.path === state.reviewCursor);
+  const file = filtered[idx];
+  if (!file || file.path !== liveReviewPlate.path) return false;
+
+  const topbar = document.querySelector(".bm-review-topbar");
+  if (topbar) {
+    const scope = topbar.querySelector(".bm-review-scope");
+    if (scope) scope.textContent = `Currently reviewing: ${reviewFilterSummary()}`;
+    const counter = topbar.querySelector(".bm-review-counter");
+    if (counter) counter.textContent = `${idx + 1} of ${filtered.length}`;
+    const prevBtn = topbar.querySelector("#review-prev-btn");
+    if (prevBtn) prevBtn.disabled = idx === 0;
+    const nextBtn = topbar.querySelector("#review-next-btn");
+    if (nextBtn) nextBtn.disabled = idx === filtered.length - 1;
+  }
+  // Rotation is just a CSS transform on the frame around the plate's actual
+  // media element (see mountRotatedPlate), so reapplying it in place doesn't
+  // need to touch — and doesn't reset — that media element either.
+  if (file.rotation !== liveReviewPlate.rotation) {
+    mountRotatedPlate(plateEl, file.rotation);
+    liveReviewPlate.rotation = file.rotation;
+  }
+
+  const body = document.querySelector(".bm-body");
+  const oldPreview = body ? body.querySelector(":scope > .bm-preview") : null;
+  const newPreview = renderPreview();
+  if (body) {
+    if (oldPreview) body.replaceChild(newPreview, oldPreview);
+    else body.appendChild(newPreview);
+  }
+  return true;
+}
+
 function render() {
   // render() tears down and rebuilds the entire #app subtree on every call —
   // including the file grid and the rail's nav list — so their scroll
@@ -1536,6 +1612,14 @@ function render() {
   const prevRailScroll = document.querySelector(".bm-rail-scroll");
   const railScrollTop = prevRailScroll ? prevRailScroll.scrollTop : 0;
 
+  if (!state.loadingInitial) maybeAdvanceReview(); // may flip state.reviewMode/reviewCursor off before anything below reads them
+
+  // See updateReviewInPlace() above — try it first so review mode's plate
+  // survives an unrelated re-render. Only a genuine full rebuild (entering/
+  // exiting review, stepping to another file, a modal opening) falls through.
+  if (state.reviewMode && updateReviewInPlace()) return;
+  liveReviewPlate = null;
+
   app.innerHTML = "";
   app.appendChild(renderTitlebar());
   // While the startup last-folder lookup and its first file scan are in flight,
@@ -1549,10 +1633,12 @@ function render() {
     app.appendChild(renderLoadingScreen());
     return;
   }
-  maybeAdvanceReview(); // may flip state.reviewMode/reviewCursor off before anything below reads them
   const body = el(`<div class="bm-body${state.reviewMode ? " bm-body-review" : ""}"></div>`);
   if (state.reviewMode) {
     body.appendChild(renderReviewMain());
+    const filtered = getFiltered();
+    const file = filtered.find((f) => f.path === state.reviewCursor);
+    if (file) liveReviewPlate = { path: file.path, rotation: file.rotation };
   } else {
     body.appendChild(renderRail());
     body.appendChild(renderMain());
@@ -2502,7 +2588,7 @@ function renderLocationField(file) {
               .join("")}
           </select>
           <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
-          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autosave-btn" title="Save a renamed copy to your autosave folder, leaving this file untouched (set the folder the first time, or in Options)">${ICONS.download} Autosave</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autoexport-btn" title="Save a copy to your autoexport folder as a PDF, leaving this file untouched (set the folder the first time, or in Options)">${ICONS.download} Autoexport</button>
         </div>
       </div>
     </div>`;
@@ -2518,8 +2604,8 @@ function wireLocationField(panel) {
   }
   const autorenameBtn = panel.querySelector("#autorename-btn");
   if (autorenameBtn) autorenameBtn.addEventListener("click", autorenameSelected);
-  const autosaveBtn = panel.querySelector("#autosave-btn");
-  if (autosaveBtn) autosaveBtn.addEventListener("click", autosaveSelected);
+  const autoexportBtn = panel.querySelector("#autoexport-btn");
+  if (autoexportBtn) autoexportBtn.addEventListener("click", autoexportSelected);
 }
 
 // Builds the actual <embed>/<img> for a file — shared by the single-file
@@ -3188,10 +3274,10 @@ function renderSettingsModal() {
           </div>
           <div class="bm-settings-row">
             <div>
-              <div class="bm-settings-row-label">Autosave folder</div>
-              <div class="bm-settings-row-value">${escapeHtml(state.autosaveFolder || "Not set")}</div>
+              <div class="bm-settings-row-label">Autoexport folder</div>
+              <div class="bm-settings-row-value">${escapeHtml(state.autoexportFolder || "Not set")}</div>
             </div>
-            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-autosave-btn">Change</button>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-autoexport-btn">Change</button>
           </div>
         </div>
         <div class="bm-modal-footer">
@@ -3212,9 +3298,9 @@ function renderSettingsModal() {
     state.settingsModalOpen = false;
     openCommenterNameModal();
   });
-  overlay.querySelector("#settings-change-autosave-btn").addEventListener("click", async () => {
+  overlay.querySelector("#settings-change-autoexport-btn").addEventListener("click", async () => {
     const chosen = await window.api.selectFolder();
-    if (chosen) await setAutosaveFolder(chosen);
+    if (chosen) await setAutoexportFolder(chosen);
   });
 
   return overlay;
@@ -3312,7 +3398,7 @@ function renderCommenterNameModal() {
   state.commenterName = (await window.api.getCommenterName()) || "";
   state.commenterNameDraft = state.commenterName;
   if (!state.commenterName) state.commenterModalOpen = true;
-  state.autosaveFolder = (await window.api.getAutosaveFolder()) || "";
+  state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   window.api.onRollbackStatus((status) => {
     state.rollbackStatus = status;
