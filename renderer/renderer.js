@@ -129,6 +129,7 @@ const state = {
   commenterName: "", // per-device name signed onto new comments — see main.js's settings.json
   commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
+  abAppsName: "", // name of whoever's signed in to AB Apps, if anyone — overrides commenterName when set, see commentSignerName()
   settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autoexport folder)
   theme: "system", // "system" | "light" | "dark" | "midnight" — per-device, see main.js's settings.json and resolveTheme()
   autoexportFolder: "", // per-device absolute folder the Autoexport button files things into — see main.js's settings.json; asked for on first use, changeable from Options
@@ -169,7 +170,19 @@ function pushUndo(label, undo) {
   // human-readable label, which is exactly what a recent-activity feed needs.
   undoStack.push({ id: ++undoIdCounter, label, undo, time: Date.now() });
   if (undoStack.length > MAX_UNDO) undoStack.shift();
-  render();
+  // Deferred rather than called inline: some callers (e.g. a comment
+  // textarea's blur handler, fired when Tab moves focus off it) invoke
+  // pushUndo() in the middle of the browser's own default action for that
+  // key -- it blurs the old field, runs this handler, then focuses whatever
+  // field is next in tab order. Rendering synchronously here tears down and
+  // rebuilds the DOM *before* that focus-the-next-field step runs, so the
+  // browser ends up trying to focus a node that no longer exists and focus
+  // falls back to <body> -- the next Tab press then starts over from the top
+  // of the page. Pushing render() to the next tick lets that focus move land
+  // first; by the time render() runs, document.activeElement is the real
+  // next field, and render()'s own captureFocus/restoreFocus carries it over
+  // to its freshly-rebuilt replacement.
+  setTimeout(render, 0);
 }
 
 // Undoes the most recent action — the toolbar Undo button and Ctrl+Z.
@@ -621,9 +634,10 @@ const commentEditSnapshot = {};
 // whoever reads it later knows who wrote it and when. Uses commenterName as
 // typed/stored in settings.json (see main.js) rather than any OS-level
 // account name, since one device can be shared and the name is meant to be
-// whatever the person answered the "Your name for comments" prompt with.
+// whatever the person answered the "Your name for comments" prompt with —
+// unless someone's signed in to AB Apps, whose name wins (see commentSignerName).
 function commentAttributionLine() {
-  const name = state.commenterName || "Unknown";
+  const name = commentSignerName() || "Unknown";
   const stamp = new Date().toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -1590,12 +1604,62 @@ function updateReviewInPlace() {
 
   const body = document.querySelector(".bm-body");
   const oldPreview = body ? body.querySelector(":scope > .bm-preview") : null;
+  // The tags/comments pane scrolls independently of the rest of the window
+  // (see .bm-preview-scroll in renderPreviewSingle) -- adding/removing a tag
+  // or editing a comment re-renders this pane, so without carrying this over
+  // the reviewer would get snapped back to the top of it on every edit.
+  const oldPreviewScroll = oldPreview ? oldPreview.querySelector(".bm-preview-scroll") : null;
+  const previewScrollTop = oldPreviewScroll ? oldPreviewScroll.scrollTop : 0;
   const newPreview = renderPreview();
   if (body) {
     if (oldPreview) body.replaceChild(newPreview, oldPreview);
     else body.appendChild(newPreview);
   }
+  const newPreviewScroll = newPreview.querySelector(".bm-preview-scroll");
+  if (newPreviewScroll) newPreviewScroll.scrollTop = previewScrollTop;
   return true;
+}
+
+// Captures which element (if any) inside #app has focus, so a render() that's
+// about to tear down and rebuild that element's subtree can hand focus back to
+// its replacement afterward — see restoreFocus. Without this, a field's own
+// change/input handler re-rendering synchronously (e.g. picking a tag,
+// changing the Location select) detaches the focused element mid-edit, and a
+// detached element's focus falls back to <body>; the very next Tab then starts
+// over from the top of the page instead of continuing to the next field.
+function captureFocus() {
+  const focused = document.activeElement;
+  if (!focused || focused === document.body || !app.contains(focused)) return null;
+  return {
+    id: focused.id || null,
+    dataIdx: focused.dataset && focused.dataset.idx !== undefined ? focused.dataset.idx : null,
+    firstClass: focused.classList && focused.classList[0] ? focused.classList[0] : null,
+    selectionStart: "selectionStart" in focused ? focused.selectionStart : null,
+    selectionEnd: "selectionEnd" in focused ? focused.selectionEnd : null,
+  };
+}
+
+// Hands focus back to whatever replaced the element captureFocus() saw —
+// matched by id where the rebuilt element has a stable one (selects, inputs),
+// or by its first class plus data-idx for the repeated per-row elements
+// (comment textareas) that don't.
+function restoreFocus(info) {
+  if (!info) return;
+  let target = null;
+  if (info.id) target = document.getElementById(info.id);
+  if (!target && info.firstClass && info.dataIdx != null) {
+    target = app.querySelector(`.${info.firstClass}[data-idx="${info.dataIdx}"]`);
+  }
+  if (!target || target === document.activeElement) return;
+  target.focus();
+  if (info.selectionStart != null && "setSelectionRange" in target) {
+    try {
+      target.setSelectionRange(info.selectionStart, info.selectionEnd);
+    } catch {
+      // Not a text-selectable input at the replacement (e.g. focus landed on a
+      // <select> instead) — nothing to restore.
+    }
+  }
 }
 
 function render() {
@@ -1611,13 +1675,21 @@ function render() {
   const gridScrollTop = prevGridWrap ? prevGridWrap.scrollTop : 0;
   const prevRailScroll = document.querySelector(".bm-rail-scroll");
   const railScrollTop = prevRailScroll ? prevRailScroll.scrollTop : 0;
+  // Same reasoning, for the preview pane's own scroll region (tags/comments —
+  // see .bm-preview-scroll in renderPreviewSingle).
+  const prevPreviewScroll = document.querySelector(".bm-preview-scroll");
+  const previewScrollTop = prevPreviewScroll ? prevPreviewScroll.scrollTop : 0;
+  const focusInfo = captureFocus();
 
   if (!state.loadingInitial) maybeAdvanceReview(); // may flip state.reviewMode/reviewCursor off before anything below reads them
 
   // See updateReviewInPlace() above — try it first so review mode's plate
   // survives an unrelated re-render. Only a genuine full rebuild (entering/
   // exiting review, stepping to another file, a modal opening) falls through.
-  if (state.reviewMode && updateReviewInPlace()) return;
+  if (state.reviewMode && updateReviewInPlace()) {
+    restoreFocus(focusInfo);
+    return;
+  }
   liveReviewPlate = null;
 
   app.innerHTML = "";
@@ -1649,6 +1721,8 @@ function render() {
   if (newGridWrap) newGridWrap.scrollTop = gridScrollTop;
   const newRailScroll = document.querySelector(".bm-rail-scroll");
   if (newRailScroll) newRailScroll.scrollTop = railScrollTop;
+  const newPreviewScroll = document.querySelector(".bm-preview-scroll");
+  if (newPreviewScroll) newPreviewScroll.scrollTop = previewScrollTop;
   if (state.tagModalOpen) {
     const overlay = renderTagManager();
     app.appendChild(overlay);
@@ -1659,6 +1733,7 @@ function render() {
   if (state.aboutOpen) app.appendChild(renderAbout());
   if (state.settingsModalOpen) app.appendChild(renderSettingsModal());
   if (state.commenterModalOpen) app.appendChild(renderCommenterNameModal());
+  restoreFocus(focusInfo);
 }
 
 // Full-window loading state shown only during the startup sequence in init()
@@ -3266,11 +3341,19 @@ function renderSettingsModal() {
             </div>
           </div>
           <div class="bm-settings-row">
-            <div>
+            ${
+              state.abAppsName
+                ? `<div>
+              <div class="bm-settings-row-label">Comment name</div>
+              <div class="bm-settings-row-value">${escapeHtml(state.abAppsName)}</div>
+              <div class="bm-settings-row-value">From AB Apps. A manager can change it in AB Apps.</div>
+            </div>`
+                : `<div>
               <div class="bm-settings-row-label">Comment name</div>
               <div class="bm-settings-row-value">${escapeHtml(state.commenterName || "Not set")}</div>
             </div>
-            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-name-btn">Change</button>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-name-btn">Change</button>`
+            }
           </div>
           <div class="bm-settings-row">
             <div>
@@ -3294,7 +3377,8 @@ function renderSettingsModal() {
   overlay.querySelectorAll(".bm-theme-toggle-btn").forEach((btn) => {
     btn.addEventListener("click", () => setTheme(btn.dataset.themeChoice));
   });
-  overlay.querySelector("#settings-change-name-btn").addEventListener("click", () => {
+  // Absent while the name comes from AB Apps -- it can't be changed here then.
+  overlay.querySelector("#settings-change-name-btn")?.addEventListener("click", () => {
     state.settingsModalOpen = false;
     openCommenterNameModal();
   });
@@ -3311,6 +3395,27 @@ function renderSettingsModal() {
 // signs onto every new comment. Shown unskippably on first launch — there's
 // no Cancel/✕/backdrop-close/Escape until a name has actually been saved —
 // and reopenable any time after that from the Options dialog to change it.
+// Both are skipped while someone's signed in to AB Apps, whose name takes
+// over (see main.js's readAbAppsName) without ever replacing commenterName.
+function commentSignerName() {
+  return state.abAppsName || state.commenterName;
+}
+
+// Pushed from main.js whenever AB Apps signs someone in or out (or renames
+// them) while the app is open. Signing in closes the name prompt — it's moot
+// now; signing out with no device name to fall back on reopens it, just like
+// first launch. Opened directly rather than via openCommenterNameModal so it
+// stacks over (instead of discarding) anything else that's open.
+function setAbAppsName(name) {
+  state.abAppsName = name || "";
+  if (state.abAppsName) state.commenterModalOpen = false;
+  else if (!state.commenterName && !state.commenterModalOpen) {
+    state.commenterNameDraft = "";
+    state.commenterModalOpen = true;
+  }
+  render();
+}
+
 function openCommenterNameModal() {
   if (state.tagModalOpen) closeTagManager(false);
   if (state.aboutOpen) closeAbout();
@@ -3397,7 +3502,9 @@ function renderCommenterNameModal() {
   state.appVersion = await window.api.getAppVersion();
   state.commenterName = (await window.api.getCommenterName()) || "";
   state.commenterNameDraft = state.commenterName;
-  if (!state.commenterName) state.commenterModalOpen = true;
+  state.abAppsName = (await window.api.getAbAppsName()) || "";
+  if (!commentSignerName()) state.commenterModalOpen = true;
+  window.api.onAbAppsName((name) => setAbAppsName(name));
   state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   window.api.onRollbackStatus((status) => {

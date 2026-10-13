@@ -87,6 +87,9 @@ function createWindow() {
   // restore/maximize glyph can reflect the real window state.
   mainWindow.on("maximize", () => sendWindowState());
   mainWindow.on("unmaximize", () => sendWindowState());
+  // Coming back to the window is the most likely moment someone just signed
+  // in/out of AB Apps -- see refreshAbAppsName.
+  mainWindow.on("focus", () => refreshAbAppsName());
 }
 
 // Keeps Windows's native titleBarOverlay in sync with OS-level dark/light
@@ -131,6 +134,9 @@ app.whenReady().then(() => {
   } catch {}
   fs.mkdirSync(TRASH_DIR, { recursive: true });
   createWindow();
+  // Works even while the file doesn't exist yet (stat just reports zeros),
+  // so it also catches a sign-in after launch.
+  fs.watchFile(AB_APPS_IDENTITY_FILE, { interval: 2000 }, () => refreshAbAppsName());
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -141,6 +147,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("will-quit", () => {
+  fs.unwatchFile(AB_APPS_IDENTITY_FILE);
   exiftool.end();
 });
 
@@ -454,6 +461,47 @@ function writeSettings(patch) {
 ipcMain.handle("get-commenter-name", () => readSettings().commenterName || null);
 
 ipcMain.handle("set-commenter-name", (event, name) => writeSettings({ commenterName: name }));
+
+// --- AB Apps identity --------------------------------------------------------
+// AB Apps is the in-house launcher that signs a person in once for every
+// AB app. While someone is signed in there, it keeps this file in the
+// Windows account's AppData (deleted again on sign-out):
+//   { "version": 1, "personId": "…", "name": "Mary Manager", "class": "manager", … }
+// Only `name` matters here. When the file is valid (parses, version 1, a
+// non-empty name of at most 80 chars once trimmed), that name signs new
+// comments instead of settings.json's per-device commenterName, and the
+// renderer shows it read-only in Options. Anything else — missing file,
+// read error, or a half-written file that fails to parse — counts as "not
+// signed in" and falls back to commenterName exactly as before. The AB Apps
+// name is never written into settings.json, so the device's own name is
+// still there if the person signs out.
+const AB_APPS_IDENTITY_FILE = path.join(app.getPath("appData"), "AB Apps", "identity.json");
+
+function readAbAppsName() {
+  try {
+    const identity = JSON.parse(fs.readFileSync(AB_APPS_IDENTITY_FILE, "utf8"));
+    if (identity?.version !== 1 || typeof identity.name !== "string") return null;
+    const name = identity.name.trim();
+    return name && name.length <= 80 ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+// Last name handed to the renderer, so sign-in/sign-out/rename in AB Apps is
+// only pushed ("ab-apps-name") when it actually changed. Re-checked on window
+// focus and by a cheap 2s fs.watchFile poll (see app.whenReady), so none of
+// those need a restart to show up.
+let abAppsName = null;
+
+function refreshAbAppsName() {
+  const next = readAbAppsName();
+  if (next === abAppsName) return;
+  abAppsName = next;
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("ab-apps-name", next);
+}
+
+ipcMain.handle("get-ab-apps-name", () => (abAppsName = readAbAppsName()));
 
 ipcMain.handle("get-theme", () => readSettings().theme || null);
 

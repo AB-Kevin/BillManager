@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld("api", {
   setLastFolder: (folder) => ipcRenderer.invoke("set-last-folder", folder),
   getCommenterName: () => ipcRenderer.invoke("get-commenter-name"),
   setCommenterName: (name) => ipcRenderer.invoke("set-commenter-name", name),
+  getAbAppsName: () => ipcRenderer.invoke("get-ab-apps-name"),
+  onAbAppsName: (callback) => {
+    const listener = (event, name) => callback(name);
+    ipcRenderer.on("ab-apps-name", listener);
+    return () => ipcRenderer.removeListener("ab-apps-name", listener);
+  },
   getTheme: () => ipcRenderer.invoke("get-theme"),
   setTheme: (theme) => ipcRenderer.invoke("set-theme", theme),
   setRotation: (folder, filename, degrees) => ipcRenderer.invoke("set-rotation", folder, filename, degrees),
