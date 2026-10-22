@@ -87,12 +87,13 @@ function saveListColWidths(widths) {
   }
 }
 
-// Each sort column's natural starting direction when a header/the sort
-// dropdown switches TO it (name/tag/dir read best A→Z; size/date read best
+// Each sort column's natural starting direction when a list-view header
+// switches TO it (name/tag/dir read best A→Z; size/date read best
 // biggest-or-newest-first) — a fresh switch always starts here rather than
 // carrying over whatever direction the previously active column was in.
 const SORT_DEFAULT_DIR = { name: "asc", date: "desc", tag: "asc", dir: "asc", size: "desc" };
-// Shared by the sort dropdown and the list-view header cells: switching to a
+// Used by the list-view header cells (the sort dropdown sets column and
+// direction explicitly instead): switching to a
 // new column resets to its natural direction; clicking the column that's
 // already active flips direction instead.
 function setSortBy(key) {
@@ -2071,9 +2072,10 @@ function renderMain() {
         <div class="bm-field bm-toolbar-sort">
           <label class="bm-field-label" for="sort-select">Sort</label>
           <select class="bm-select" id="sort-select" ${state.folder ? "" : "disabled"}>
-            <option value="name" ${state.sortBy === "name" && state.sortDir === "asc" ? "selected" : ""}>Name (A–Z)</option>
-            <option value="date" ${state.sortBy === "date" && state.sortDir === "desc" ? "selected" : ""}>Newest first</option>
-            <option value="tag" ${state.sortBy === "tag" && state.sortDir === "asc" ? "selected" : ""}>Tag (A–Z)</option>
+            <option value="name:asc" ${state.sortBy === "name" && state.sortDir === "asc" ? "selected" : ""}>Name (A–Z)</option>
+            <option value="date:desc" ${state.sortBy === "date" && state.sortDir === "desc" ? "selected" : ""}>Newest first</option>
+            <option value="date:asc" ${state.sortBy === "date" && state.sortDir === "asc" ? "selected" : ""}>Oldest first</option>
+            <option value="tag:asc" ${state.sortBy === "tag" && state.sortDir === "asc" ? "selected" : ""}>Tag (A–Z)</option>
           </select>
         </div>
         <div class="bm-view-toggle bm-toolbar-view" role="group" aria-label="View">
@@ -2125,7 +2127,11 @@ function renderMain() {
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
   });
   main.querySelector("#sort-select").addEventListener("change", (e) => {
-    setSortBy(e.target.value); // dropdown always names a different column than whatever's active, so this always takes the "switch" branch (that column's natural default direction) — never the toggle branch
+    // Each option names an exact column + direction (e.g. "date:asc"), so set
+    // both directly instead of going through setSortBy's switch/toggle logic.
+    const [key, dir] = e.target.value.split(":");
+    state.sortBy = key;
+    state.sortDir = dir;
     const nowFiltered = getFiltered();
     renderRuleRowInto(main, nowFiltered);
     renderGridInto(main.querySelector("#grid-wrap"), nowFiltered);
