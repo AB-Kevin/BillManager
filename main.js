@@ -889,33 +889,59 @@ async function writeAutoexportCopy(srcFull, destFull, ext) {
   fs.writeFileSync(destFull, await pdfDoc.save());
 }
 
-// The Autoexport button is a "Save As": it writes a file under a fresh
-// yyyyMMdd_HHmmss timestamp name — same naming scheme as autorenameOneFile —
-// into `destFolder`, the per-device autoexport folder (see
-// get/set-autoexport-folder above), and leaves the original completely
-// untouched in the catalog. The output is always named with a .pdf extension
-// — see writeAutoexportCopy above for how a non-PDF source gets there.
-// Collisions are checked against destFolder, not the file's own folder,
-// since that's where the new name actually has to be unique. Returns
-// destFull — the copy's new absolute path — so the renderer can undo by
-// deleting just that copy (see undo-autoexport below).
+// Autoexport renames the original to match its exported copy, so a candidate
+// stem has to be free in both places: as a .pdf in destFolder, and under the
+// original's own extension in its catalog folder.
+function autoexportStemIsFree(destFolder, srcDirFull, stem, srcExt) {
+  return !fs.existsSync(path.join(destFolder, `${stem}.pdf`)) && !fs.existsSync(path.join(srcDirFull, `${stem}${srcExt}`));
+}
+
+// Renames the original to the exported copy's name (keeping the original's
+// own extension, so a JPG/PNG stays a valid image), so the catalog file and
+// its export can be matched up at a glance. If the rename fails (e.g. the
+// file is locked), the copy is deleted again rather than leaving an export
+// whose name no longer matches anything in the catalog.
+function renameAfterAutoexport(folder, relPath, stem, destFull) {
+  const result = renameOneFile(folder, relPath, `${stem}${path.extname(relPath)}`);
+  if (result.error) {
+    try {
+      fs.unlinkSync(destFull);
+    } catch {}
+  }
+  return result;
+}
+
+// The Autoexport button writes a PDF copy under a fresh yyyyMMdd_HHmmss
+// timestamp name — same naming scheme as autorenameOneFile — into
+// `destFolder`, the per-device autoexport folder (see
+// get/set-autoexport-folder above), then renames the original in the catalog
+// to that same name (see renameAfterAutoexport above). The copy is always
+// named with a .pdf extension — see writeAutoexportCopy above for how a
+// non-PDF source gets there. Collisions are checked against both folders
+// (see autoexportStemIsFree above). Returns destFull — the copy's new
+// absolute path — and the original's new relative path, so the renderer can
+// undo by deleting the copy and renaming the original back (see
+// undo-autoexport below).
 async function autoexportOneFile(folder, relPath, destFolder) {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
-  let name = `${stamp}.pdf`;
+  const srcFull = path.join(folder, relPath);
+  const srcDirFull = path.dirname(srcFull);
+  const srcExt = path.extname(relPath);
+  let stem = stamp;
   let n = 1;
-  while (fs.existsSync(path.join(destFolder, name))) {
-    name = `${stamp}_${n}.pdf`;
+  while (!autoexportStemIsFree(destFolder, srcDirFull, stem, srcExt)) {
+    stem = `${stamp}_${n}`;
     n++;
   }
 
-  const srcFull = path.join(folder, relPath);
+  const name = `${stem}.pdf`;
   const destFull = path.join(destFolder, name);
   try {
     fs.mkdirSync(destFolder, { recursive: true });
-    await writeAutoexportCopy(srcFull, destFull, path.extname(relPath).toLowerCase());
+    await writeAutoexportCopy(srcFull, destFull, srcExt.toLowerCase());
     // A plain copy carries over the source's own last-modified time (same as
     // an Explorer copy-paste), which would leave the copy showing the
     // original bill's old date despite its new timestamped filename. Stamp
@@ -924,7 +950,9 @@ async function autoexportOneFile(folder, relPath, destFolder) {
   } catch (e) {
     return { error: `Couldn't autoexport "${path.basename(relPath)}": ${e.message}` };
   }
-  return { destFull, name };
+  const renamed = renameAfterAutoexport(folder, relPath, stem, destFull);
+  if (renamed.error) return { error: renamed.error };
+  return { destFull, name, path: renamed.path };
 }
 
 ipcMain.handle("autoexport-file", async (event, folder, relPath, destFolder) => {
@@ -934,7 +962,8 @@ ipcMain.handle("autoexport-file", async (event, folder, relPath, destFolder) => 
 // Autoexports many files in one action, mirroring autorenameFilesBatch: all
 // copies share the same stamp, so each gets a " (n)" suffix (1-indexed in
 // selection order) to keep them from colliding with each other at the
-// destination. Each file is attempted independently (sequentially, since
+// destination, and each original is renamed to match its copy, same as
+// autoexportOneFile. Each file is attempted independently (sequentially, since
 // image-to-PDF conversion is async), so one locked/in-use/corrupt file
 // doesn't block the rest.
 async function autoexportFilesBatch(folder, relPaths, destFolder) {
@@ -951,23 +980,29 @@ async function autoexportFilesBatch(folder, relPaths, destFolder) {
   }
   for (let i = 0; i < relPaths.length; i++) {
     const relPath = relPaths[i];
-    let name = `${stamp} (${i + 1}).pdf`;
+    const srcFull = path.join(folder, relPath);
+    const srcDirFull = path.dirname(srcFull);
+    const srcExt = path.extname(relPath);
+    let stem = `${stamp} (${i + 1})`;
     let n = 1;
-    while (fs.existsSync(path.join(destFolder, name))) {
-      name = `${stamp} (${i + 1})_${n}.pdf`;
+    while (!autoexportStemIsFree(destFolder, srcDirFull, stem, srcExt)) {
+      stem = `${stamp} (${i + 1})_${n}`;
       n++;
     }
 
-    const srcFull = path.join(folder, relPath);
+    const name = `${stem}.pdf`;
     const destFull = path.join(destFolder, name);
     try {
-      await writeAutoexportCopy(srcFull, destFull, path.extname(relPath).toLowerCase());
+      await writeAutoexportCopy(srcFull, destFull, srcExt.toLowerCase());
       // See the matching comment in autoexportOneFile above.
       fs.utimesSync(destFull, now, now);
-      saved.push({ source: relPath, destFull, name });
     } catch (e) {
       errors.push({ path: relPath, error: `Couldn't autoexport "${path.basename(relPath)}": ${e.message}` });
+      continue;
     }
+    const renamed = renameAfterAutoexport(folder, relPath, stem, destFull);
+    if (renamed.error) errors.push({ path: relPath, error: renamed.error });
+    else saved.push({ source: relPath, destFull, name, path: renamed.path });
   }
   return { saved, errors };
 }
@@ -976,10 +1011,8 @@ ipcMain.handle("autoexport-files-batch", async (event, folder, relPaths, destFol
   return autoexportFilesBatch(folder, relPaths, destFolder);
 });
 
-// Undoes an Autoexport. Since autoexportOneFile/autoexportFilesBatch only
-// ever create a new copy — the original file in the catalog is never
-// touched — undoing means deleting that copy outright, not restoring
-// anything.
+// Deletes an Autoexport's copy — half of undoing one; the renderer renames
+// the original back to its old name separately via rename-file.
 ipcMain.handle("undo-autoexport", async (event, destFull) => {
   try {
     fs.unlinkSync(destFull);

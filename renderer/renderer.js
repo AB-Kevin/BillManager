@@ -863,16 +863,25 @@ async function ensureAutoexportFolder() {
   return chosen;
 }
 
-// Autoexports every selected file: a "Save As", not a Save — it writes the
-// file under a fresh yyyyMMdd_HHmmss name (same naming scheme as Autorename)
-// into the per-device autoexport folder (see ensureAutoexportFolder) and
-// leaves the original completely untouched in the catalog. The exported copy
-// is always a PDF — a JPG/PNG source gets wrapped into one on the main-
-// process side (see writeAutoexportCopy in main.js) — so autoexporting a
-// mix of scans and photos still produces a folder of nothing but PDFs.
-// Selection is left as-is since nothing about the original file changed.
-// Undo simply deletes the copy that was created — there's nothing to
-// restore, since the original was never moved or renamed.
+// Undoes one autoexport: deletes the exported copy, then renames the original
+// (now at `newPath`) back to `prevName`.
+async function undoOneAutoexport(destFull, newPath, prevName) {
+  const r = await window.api.undoAutoexport(destFull);
+  if (r && r.error) throw new Error(r.error);
+  const r2 = await window.api.renameFile(state.folder, newPath, prevName);
+  if (r2 && r2.error) throw new Error(r2.error);
+}
+
+// Autoexports every selected file: writes a copy under a fresh
+// yyyyMMdd_HHmmss name (same naming scheme as Autorename) into the
+// per-device autoexport folder (see ensureAutoexportFolder), then renames the
+// original in the catalog to that same name, keeping its own extension, so
+// the two can be matched up. The exported copy is always a PDF — a JPG/PNG
+// source gets wrapped into one on the main-process side (see
+// writeAutoexportCopy in main.js) — so autoexporting a mix of scans and
+// photos still produces a folder of nothing but PDFs. Selection follows the
+// renamed originals, same as Autorename. Undo deletes the copy and renames
+// the original back.
 async function autoexportSelected() {
   const files = getSelectedFiles();
   if (files.length === 0 || !state.folder) return;
@@ -888,22 +897,20 @@ async function autoexportSelected() {
         alert(result.error);
         return;
       }
-      const destFull = result.destFull;
-      pushUndo(`Autoexport "${prevName}"`, async () => {
-        const r = await window.api.undoAutoexport(destFull);
-        if (r && r.error) throw new Error(r.error);
-      });
+      state.selected = new Set([result.path]);
+      state.selectAnchor = result.path;
+      const { destFull, path: newPath } = result;
+      pushUndo(`Autoexport "${prevName}"`, () => undoOneAutoexport(destFull, newPath, prevName));
     } catch (e) {
       alert(`Couldn't autoexport "${prevName}": ${e.message || e}`);
     } finally {
-      // Only matters if destFolder happens to be inside the catalog folder —
-      // otherwise nothing about the listing changed, and this is a no-op.
       await refreshFiles();
     }
     return;
   }
 
   const paths = files.map((f) => f.path);
+  const prevNames = new Map(files.map((f) => [f.path, f.name]));
   let saved = [];
   let errors = [];
   try {
@@ -913,16 +920,20 @@ async function autoexportSelected() {
   } catch (e) {
     errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
   } finally {
+    state.selected = new Set([...saved.map((s) => s.path), ...errors.map((e) => e.path)]);
     await refreshFiles();
   }
   if (saved.length > 0) {
     pushUndo(`Autoexport ${saved.length} files`, async () => {
       const errs = [];
-      for (const { source, destFull } of saved) {
-        const r = await window.api.undoAutoexport(destFull);
-        if (r && r.error) errs.push(`${source}: ${r.error}`);
+      for (const { source, destFull, path: newPath } of saved) {
+        try {
+          await undoOneAutoexport(destFull, newPath, prevNames.get(source));
+        } catch (e) {
+          errs.push(`${source}: ${e.message || e}`);
+        }
       }
-      if (errs.length > 0) throw new Error(`Some copies couldn't be undone:\n${errs.join("\n")}`);
+      if (errs.length > 0) throw new Error(`Some autoexports couldn't be undone:\n${errs.join("\n")}`);
     });
   }
   if (errors.length > 0) {
@@ -2669,7 +2680,7 @@ function renderLocationField(file) {
               .join("")}
           </select>
           <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autorename-btn" title="Rename to the current date and time, to clear a name collision at the destination">${ICONS.pencil} Autorename</button>
-          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autoexport-btn" title="Save a copy to your autoexport folder as a PDF, leaving this file untouched (set the folder the first time, or in Options)">${ICONS.download} Autoexport</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-sm" id="autoexport-btn" title="Save a copy to your autoexport folder as a PDF, and rename this file to match it (set the folder the first time, or in Options)">${ICONS.download} Autoexport</button>
         </div>
       </div>
     </div>`;
