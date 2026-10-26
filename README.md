@@ -70,6 +70,20 @@ without publishing if the tag doesn't match the version in `package.json`.
   move, copy, and rename with the file automatically — even outside the app.
   Files already tagged elsewhere (Windows Explorer's "Tags" field, Adobe
   apps, etc.) will show those tags in BillManager too.
+- Comments are signed with the name of whoever is signed in to AB Apps
+  (read from AB Apps' `identity.json`, and updated within a couple of seconds
+  when someone signs in or out there). Without AB Apps, they use the comment
+  name set on this computer, which the app asks for on first launch and can
+  be changed under Options.
+- **Autoexport** saves a PDF copy of the selected file (photos are converted
+  and turned the right way up) into this computer's autoexport folder, named
+  with the current date and time (`yyyyMMdd_HHmmss`), and renames the
+  original in the folder to match. The autoexport folder is asked for the
+  first time and can be changed under Options. Undo removes the copy and
+  restores the original name.
+- **Autorename** renames the selected files to the current date and time,
+  keeping their extensions, to clear a name clash before moving them. Several
+  files renamed together get ` (1)`, ` (2)` and so on.
 - Editing metadata rewrites the file in place. `-overwrite_original` is used
   so ExifTool doesn't leave a `_original` backup copy behind.
 - The predefined-tag vocabulary (names, colors, keyboard shortcuts — managed

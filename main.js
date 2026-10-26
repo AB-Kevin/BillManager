@@ -129,6 +129,8 @@ ipcMain.handle("window-is-maximized", () => !!mainWindow?.isMaximized());
 const TRASH_DIR = path.join(app.getPath("userData"), "trash");
 
 app.whenReady().then(() => {
+  // The installer's build.appId, so taskbar pinning and grouping match the shortcuts.
+  app.setAppUserModelId("com.billmanager.filemanager");
   try {
     fs.rmSync(TRASH_DIR, { recursive: true, force: true });
   } catch {}
@@ -1143,17 +1145,39 @@ function oldTagConfigPath(folder) {
   return path.join(OLD_TAG_CONFIG_DIR, `${hash}.json`);
 }
 
+// Returns null if the file is missing or holds no tag list, and throws if it's
+// there but can't be read (still locked after the same retries as a save, or
+// damaged) -- treating that as "no tags" would let the next save wipe it.
 function readTagsFile(file) {
-  try {
-    const raw = fs.readFileSync(file, "utf8");
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed.tags)) return parsed.tags;
-  } catch {}
-  return null;
+  let raw;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      raw = fs.readFileSync(file, "utf8");
+      break;
+    } catch (e) {
+      if (e.code === "ENOENT") return null;
+      if (attempt >= JSON_WRITE_RETRIES || !["EBUSY", "EPERM", "EACCES"].includes(e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, JSON_WRITE_RETRY_DELAY_MS);
+    }
+  }
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed.tags) ? parsed.tags : null;
 }
 
+// Folders whose tag list was there but couldn't be read when they were opened.
+// The window shows no tags for them, so saving its list would replace the real
+// one; saves are refused until the folder is opened again and reads cleanly.
+const unreadableTagConfigs = new Set();
+
 ipcMain.handle("get-tag-config", async (event, folder) => {
-  const current = readTagsFile(tagConfigPath(folder));
+  unreadableTagConfigs.delete(folder);
+  let current;
+  try {
+    current = readTagsFile(tagConfigPath(folder));
+  } catch {
+    unreadableTagConfigs.add(folder);
+    return [];
+  }
   if (current) {
     // Backfills the hidden attribute for files that already existed before
     // this was added (e.g. created by an older build of the app).
@@ -1163,7 +1187,10 @@ ipcMain.handle("get-tag-config", async (event, folder) => {
   // One-time migration for catalogs whose predefined tags were saved by an
   // older version of the app into its own userData directory instead of
   // alongside the folder.
-  const old = readTagsFile(oldTagConfigPath(folder));
+  let old = null;
+  try {
+    old = readTagsFile(oldTagConfigPath(folder));
+  } catch {}
   if (old) {
     writeTagsFile(tagConfigPath(folder), old);
     return old;
@@ -1172,6 +1199,11 @@ ipcMain.handle("get-tag-config", async (event, folder) => {
 });
 
 ipcMain.handle("save-tag-config", async (event, folder, tags) => {
+  if (unreadableTagConfigs.has(folder)) {
+    throw new Error(
+      "The folder's tag list couldn't be read when it was opened (OneDrive may have been syncing it), so it wasn't saved over. Open the folder again and retry. If it still can't be read, restore .catalog-tags.json from OneDrive's version history."
+    );
+  }
   writeTagsFile(tagConfigPath(folder), tags);
   return tags;
 });
