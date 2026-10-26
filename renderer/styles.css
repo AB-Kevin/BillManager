@@ -216,8 +216,12 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-body { flex: 1; display: grid; grid-template-columns: 268px 1fr 384px; grid-template-rows: minmax(0, 1fr); min-height: 0; }
 /* Review mode (see renderReviewMain) drops the rail's 268px track — its one
    big viewer fills that space too — while the right-hand preview pane keeps
-   its usual 384px. */
-.bm-body-review { grid-template-columns: 1fr 384px; }
+   its usual 384px, dragged via .bm-preview-resize/startPreviewResize into
+   the --review-preview-width custom property set on this element (falling
+   back to 384px so a first-ever render, before JS sets it, still lays out
+   correctly). Only review mode's pane resizes this way — the ordinary
+   grid/list view's preview stays a fixed 384px, same as before. */
+.bm-body-review { grid-template-columns: 1fr var(--review-preview-width, 384px); }
 
 /* ---- Startup loading screen (see renderLoadingScreen in renderer.js) ---- */
 .bm-loading-screen {
@@ -599,7 +603,16 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-tag-editor { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 /* ---- Preview pane ---- */
-.bm-preview { display: flex; flex-direction: column; padding: var(--space-5); gap: var(--space-4); min-height: 0; border-left: 1px solid var(--border-hairline); }
+.bm-preview { position: relative; display: flex; flex-direction: column; padding: var(--space-5); gap: var(--space-4); min-height: 0; border-left: 1px solid var(--border-hairline); }
+/* Review mode only (see renderPreviewSingle/startPreviewResize) — a wide
+   invisible hit-area over the pane's left border with a thin visible line,
+   same treatment as the list view's .bm-col-resize handles. */
+.bm-preview-resize {
+  position: absolute; top: 0; left: calc(var(--space-3) / -2 - 1px); width: var(--space-3); height: 100%;
+  cursor: col-resize; z-index: 1;
+}
+.bm-preview-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--border-hairline); }
+.bm-preview-resize:hover::after { background: var(--accent-text); width: 2px; margin-left: -0.5px; }
 .bm-preview-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 .bm-preview-name {
   font-size: 19px; font-weight: 600; color: var(--text-heading); line-height: 1.25;

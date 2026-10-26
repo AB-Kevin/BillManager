@@ -87,6 +87,26 @@ function saveListColWidths(widths) {
   }
 }
 
+// Review mode's preview pane width — same persistence rationale as the list
+// column widths above, and same px-based --custom-property live-resize
+// mechanism (see startPreviewResize/.bm-body-review in styles.css).
+const DEFAULT_REVIEW_PREVIEW_WIDTH = 384;
+function loadReviewPreviewWidth() {
+  try {
+    const saved = Number(localStorage.getItem("bm-review-preview-width"));
+    return saved > 0 ? saved : DEFAULT_REVIEW_PREVIEW_WIDTH;
+  } catch {
+    return DEFAULT_REVIEW_PREVIEW_WIDTH;
+  }
+}
+function saveReviewPreviewWidth(width) {
+  try {
+    localStorage.setItem("bm-review-preview-width", String(width));
+  } catch {
+    /* private-mode/storage-disabled — width just won't survive restart */
+  }
+}
+
 // Each sort column's natural starting direction when a list-view header
 // switches TO it (name/tag/dir read best A→Z; size/date read best
 // biggest-or-newest-first) — a fresh switch always starts here rather than
@@ -120,6 +140,7 @@ const state = {
   sortDir: "asc", // "asc" | "desc" — see SORT_DEFAULT_DIR/setSortBy above
   viewMode: loadViewMode(), // "grid" | "list" — see loadViewMode/saveViewMode above
   listColWidths: loadListColWidths(), // { dir, tags, size, date } px — list-view column widths
+  reviewPreviewWidth: loadReviewPreviewWidth(), // px — review mode's preview pane width, see startPreviewResize
   allFolders: [], // relative paths of every subfolder in the catalog, incl. empty ones — move destinations
   predefinedTags: [], // [{ name, shortcut, color }] — curated vocabulary + keyboard shortcuts, per folder
   tagModalOpen: false,
@@ -513,6 +534,7 @@ async function refreshFiles(skipFocusNudge = false) {
     });
   } finally {
     state.refreshing = false;
+    lastRefreshAt = Date.now();
   }
   render();
   // Works around a Windows/Chromium quirk where rebuilding the DOM (just done by
@@ -531,12 +553,27 @@ async function refreshFiles(skipFocusNudge = false) {
 // reload would otherwise clobber an in-progress tag-manager edit or comment
 // being typed, since the reload's data reflects disk, not whatever's mid-edit.
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+// Coming back to the window after a while also rescans — on the shared
+// OneDrive folder, that's when coworkers' edits are most likely to have
+// landed. Throttled, since refreshFiles' own focus nudge (and plain
+// alt-tabbing) fires focus events constantly.
+const FOCUS_REFRESH_MIN_GAP_MS = 60 * 1000;
+let lastRefreshAt = 0;
+
+function backgroundRefreshAllowed() {
+  if (!state.folder || state.refreshing || state.tagModalOpen) return false;
+  return !isEditableTarget(document.activeElement);
+}
 
 setInterval(() => {
-  if (!state.folder || state.refreshing || state.tagModalOpen) return;
-  if (isEditableTarget(document.activeElement)) return;
+  if (!backgroundRefreshAllowed()) return;
   refreshFiles(true); // skipFocusNudge — this isn't a user-initiated action, so it shouldn't blur/refocus the window
 }, AUTO_REFRESH_INTERVAL_MS);
+
+window.addEventListener("focus", () => {
+  if (!backgroundRefreshAllowed() || Date.now() - lastRefreshAt < FOCUS_REFRESH_MIN_GAP_MS) return;
+  refreshFiles(true);
+});
 
 async function chooseFolder() {
   const folder = await window.api.selectFolder();
@@ -1725,6 +1762,7 @@ function render() {
   }
   const body = el(`<div class="bm-body${state.reviewMode ? " bm-body-review" : ""}"></div>`);
   if (state.reviewMode) {
+    body.style.setProperty("--review-preview-width", `${state.reviewPreviewWidth}px`);
     body.appendChild(renderReviewMain());
     const filtered = getFiltered();
     const file = filtered.find((f) => f.path === state.reviewCursor);
@@ -2375,6 +2413,36 @@ function startColumnResize(e, col) {
   document.addEventListener("mouseup", commit);
 }
 
+// Review mode's preview pane, dragged from the handle on its left edge (see
+// .bm-preview-resize/renderPreviewSingle) — same live-drag-then-commit shape
+// as startColumnResize above, writing straight to a --review-preview-width
+// custom property on .bm-body (see .bm-body-review in styles.css) so
+// dragging never triggers a render() and stays smooth regardless of how
+// heavy the pane's contents are. The handle sits at the pane's left
+// edge, so dragging left (negative clientX delta) grows it — the opposite
+// sign from a column's right-edge handle.
+function startPreviewResize(e) {
+  const body = document.querySelector(".bm-body");
+  if (!body) return;
+  const MIN = 280;
+  const MAX_MARGIN = 320; // leaves at least this much room for the plate itself
+  const startX = e.clientX;
+  const startWidth = state.reviewPreviewWidth;
+  const maxWidth = Math.max(MIN, body.clientWidth - MAX_MARGIN);
+
+  let liveWidth = startWidth;
+  beginPointerDrag((ev) => {
+    liveWidth = clamp(MIN, maxWidth, startWidth - (ev.clientX - startX));
+    body.style.setProperty("--review-preview-width", `${liveWidth}px`);
+  });
+  const commit = () => {
+    state.reviewPreviewWidth = liveWidth;
+    saveReviewPreviewWidth(liveWidth);
+    document.removeEventListener("mouseup", commit);
+  };
+  document.addEventListener("mouseup", commit);
+}
+
 // Thumbnail-view card: big preview plate, name/meta/dir/tags stacked below.
 function buildGridCard(f, isSelected) {
   return el(`
@@ -2749,6 +2817,7 @@ function renderPreviewSingle(file, opts = {}) {
   const hidePlate = !!opts.reviewMode;
   const panel = el(`
     <aside class="bm-preview">
+      ${opts.reviewMode ? `<div class="bm-preview-resize" title="Drag to resize"></div>` : ""}
       <div class="bm-preview-header">
         <div class="bm-preview-header-top">
           <div class="bm-preview-name">${file.name}</div>
@@ -2831,6 +2900,13 @@ ${escapeHtml(c)}</textarea>
   if (plate) {
     plate.addEventListener("dblclick", () => openFile(file.path));
     mountRotatedPlate(plate, file.rotation);
+  }
+  const resizeHandle = panel.querySelector(".bm-preview-resize");
+  if (resizeHandle) {
+    resizeHandle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      startPreviewResize(e);
+    });
   }
   wireLocationField(panel);
   const tagSelect = panel.querySelector("#tag-select");
