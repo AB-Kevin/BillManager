@@ -1,23 +1,20 @@
 /* BillManager — Anabaptist Brotherhood design system.
    Tokens mirrored from the anabaptist-brotherhood-design system's
-   tokens/*.css (Brand & Design Manual v1.1) — keep these in sync with that
-   source rather than eyeballing new values. v1.1 corrected the brand green
-   (was #006E47, a documented v1.0 error) and added Brotherhood Maroon as a
-   narrow secondary color: solid CTAs only, never structural (headings,
-   rules, rails, links stay green).
+   tokens/*.css (Brand & Design Manual v1.1), with the same Light and Dark
+   palettes as AB Apps and the other newer apps -- keep them in step with
+   those rather than eyeballing new values. Maroon is a narrow secondary
+   color: solid CTAs only, never structural (headings, rules, links stay
+   green).
 
    Theming: everything below is consumed through custom properties rather
-   than literal colors, specifically so [data-theme="dark"] / [data-theme=
-   "midnight"] (set on <html> by applyTheme() in renderer.js) can re-point a
-   handful of them and reskin the whole app:
+   than literal colors, so the [data-theme="dark"] block (set on <html> by
+   applyTheme() in renderer.js) can re-point them and reskin the whole app:
      --surface-page/--surface-card/--surface-card-alt — what's behind things:
-       the window itself, a "raised" card/modal/input, and a recessed/alt
-       tint (thumbnail placeholders, hover rows).
-     --accent-text/--on-accent/--on-rail/--rail-active-bg — the SAME
-       green-branded interactions (links, active states, filled buttons,
-       rail text) paired with whatever's correct for the surface they're
-       currently sitting on. See the Dark/Midnight blocks for how each uses
-       them differently. */
+       the window itself, a "raised" card/modal/input, and the side nav and
+       recessed tints (thumbnail placeholders, hover rows).
+     --accent-text/--text-accent — green text on whatever surface it sits
+       on, and its stronger form for active items and hovered links.
+     --fill-accent/--on-accent — solid green controls and their text. */
 :root {
   /* Color */
   --green-700: #005537;
@@ -35,34 +32,40 @@
   --gray-100: #ededee;
   --white: #ffffff;
 
-  /* Accent as used away from the rail — brand green by default, re-pointed
-     per theme so text/borders/focus rings/selection stay legible once the
-     surface behind them is no longer white. */
+  color-scheme: light;
   --accent-text: var(--green-500);
+  --text-accent: var(--green-700);
+  --fill-accent: var(--green-500);
+  --fill-accent-hover: var(--green-600);
+  --fill-accent-active: var(--green-700);
   --on-accent: var(--white); /* text/icon color for a solid accent-filled control */
-  --on-rail: var(--white); /* text/icon color for anything on --surface-rail or the About band */
-  --rail-active-bg: var(--white); /* solid highlight fill for the active rail nav item / tag plate */
   --scrollbar-thumb: var(--gray-200);
 
   --text-body: var(--gray-900);
   --text-muted: var(--gray-600);
   --text-heading: var(--accent-text);
   --text-caption: var(--gray-600);
+  --text-danger: #9c4a3d;
   --border-hairline: var(--gray-200);
-  --border-rule: var(--accent-text);
+  --border-rule: var(--green-500);
   --border-rule-soft: var(--green-300);
-  --border-reversed: color-mix(in srgb, var(--on-rail) 70%, transparent);
   --focus-ring: var(--accent-text);
   --surface-page: var(--white);
   --surface-card: var(--white); /* cards, modals, inputs, popovers, comment boxes — "raised" surfaces */
-  --surface-card-alt: var(--green-050);
-  --surface-rail: var(--green-500);
+  --surface-card-alt: var(--green-050); /* the side nav, and recessed tints */
   --brand-maroon: var(--maroon-500);
   --overlay-scrim: rgba(35, 31, 32, 0.45);
 
+  /* Tag chips (see chipTone in renderer.js): how much of a tag's own color
+     tints its chip, how strong its text is, and the ink a pale tag's text is
+     darkened (or, in Dark, lightened) toward. */
+  --chip-tint: 14%;
+  --chip-ink: 100%;
+  --chip-pale-ink: black;
+
   /* Type */
-  --font-sans: "Poppins", "Intelo Alt", "Nunito Sans", system-ui, sans-serif;
-  --font-condensed: "Barlow Condensed", "Acumin Pro Condensed", "Oswald", var(--font-sans);
+  --font-sans: "Poppins", "Intelo Alt", "Segoe UI", system-ui, sans-serif;
+  --font-condensed: "Barlow Condensed", "Acumin Pro Condensed", var(--font-sans);
   --tracking-tight: -0.01em;
   --tracking-label: 0.06em;
 
@@ -78,7 +81,6 @@
   --radius-control: 4px;
   --rule-heavy: 3px;
 
-  --shadow-window: 0 24px 60px rgba(35, 31, 32, 0.18);
   --shadow-modal: 0 18px 50px rgba(35, 31, 32, 0.28);
   --shadow-popover: 0 12px 32px rgba(35, 31, 32, 0.22);
 
@@ -87,61 +89,38 @@
 }
 
 /* ---- Dark ----
-   "Light mode with the green rail, gray main window": the rail, and every
-   filled accent button/toggle, stay exactly as :root defines them (still
-   brand green + white text) — only the page/card surfaces and body text
-   move to a dark neutral scale. --accent-text lightens, and --green-100/
-   -050 (the pale-tint role paired with it — hover fills, tag/chip defaults,
-   the empty-state highlight card) go dark-tinted to match, so every place
-   that already pairs "accent text on a light tint" keeps working once that
-   tint itself is dark instead of pale. */
+   The brand defines only a light theme; this is the newer apps' dark one,
+   keeping its structure on a warm dark ground. Solid green controls keep
+   the brand green; green text and rules lighten so they still read. The
+   pale tints (--green-100/-050: hover fills, tag defaults, the side nav)
+   go dark-tinted, so every "accent text on a light tint" pairing keeps
+   working. */
 [data-theme="dark"] {
-  --surface-page: #1b1c1e;
-  --surface-card: #232527;
-  --surface-card-alt: #2c2e31;
-  --border-hairline: #38393c;
-  --scrollbar-thumb: #48494c;
-  --text-body: #ececec;
-  --text-muted: #a8a9ab;
-  --text-caption: #a8a9ab;
-  --accent-text: #4cc38a;
-  --green-100: #24352d;
-  --green-050: #1e2b25;
+  color-scheme: dark;
+  --surface-page: #1e1c1d;
+  --surface-card: #2a2728;
+  --surface-card-alt: #1c2220;
+  --green-100: #192a24;
+  --green-050: #1c2220;
+  --border-hairline: #403c3d;
+  --border-rule: #2f9468; /* brighter than the brand green, so rules show */
+  --border-rule-soft: #314d3f;
+  --scrollbar-thumb: #4a4647;
+  --text-body: #ece9ea;
+  --text-muted: #aba8a9;
+  --text-caption: #aba8a9;
+  --text-danger: #e0907f;
+  --accent-text: #5dbe8f;
+  --text-accent: #8fd4b0;
+  --fill-accent-hover: #007a4e; /* hover lightens rather than darkens on a dark page */
+  --fill-accent-active: #00865a;
   --overlay-scrim: rgba(0, 0, 0, 0.6);
-}
+  --shadow-modal: 0 18px 50px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
 
-/* ---- Midnight ----
-   Entirely gray, rail a shade darker than the main window, with brand green
-   itself swapped for a mint scale — since --green-500/600/700/300/100/050
-   are what every accent-colored button, tag default, link, active state,
-   and focus ring already draws from, overriding just those six values is
-   what turns the whole app mint-accented in one move. Rail/About text reads
-   mint too (--on-rail), and filled buttons flip to dark text (--on-accent)
-   since the new accent-500 is pale enough to need it. */
-[data-theme="midnight"] {
-  --green-700: #3fb98e;
-  --green-600: #57cda3;
-  --green-500: #6fe0b8;
-  --green-300: #4f7d6d;
-  --green-100: #2a3d38;
-  --green-050: #23332e;
-
-  --surface-rail: #1a1c1e;
-  --surface-page: #232527;
-  --surface-card: #2b2d30;
-  --surface-card-alt: #333537;
-  --border-hairline: #3c3e41;
-  --scrollbar-thumb: #4a4c4f;
-
-  --text-body: #e7e9e8;
-  --text-muted: #a3a6a5;
-  --text-caption: #a3a6a5;
-  --accent-text: var(--green-500);
-
-  --on-accent: #0d1f1a; /* dark text needed on the now-pale mint fills */
-  --on-rail: var(--green-500); /* rail/About text reads mint instead of white */
-  --rail-active-bg: #3a3d40; /* neutral gray highlight — no white pop in an all-gray theme */
-  --overlay-scrim: rgba(0, 0, 0, 0.65);
+  --chip-tint: 30%;
+  --chip-ink: 45%;
+  --chip-pale-ink: white;
 }
 
 * { box-sizing: border-box; }
@@ -155,8 +134,8 @@ body {
 }
 button, input, select, textarea { font-family: inherit; color: inherit; }
 button { cursor: pointer; }
-a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid var(--green-300); }
-a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
+a { color: var(--accent-text); text-decoration: none; border-bottom: 1px solid var(--border-rule-soft); }
+a:hover { color: var(--text-accent); border-bottom-color: var(--border-rule); }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 #app {
@@ -164,8 +143,6 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   display: flex;
   flex-direction: column;
   background: var(--surface-page);
-  border: 1px solid var(--border-hairline);
-  box-shadow: var(--shadow-window);
   overflow: hidden;
   /* This is an app shell, not a document — click-drag is for selecting files
      (including Shift/Ctrl-click ranges in the grid), not text. Without this,
@@ -177,34 +154,25 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   -webkit-user-select: none;
 }
 
-/* ---- Title bar ---- */
-.bm-titlebar {
-  height: 44px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--surface-page);
-  border-bottom: 1px solid var(--border-hairline);
-  -webkit-app-region: drag;
+/* ---- Header ----
+   The same header as AB Apps and the other newer apps: logo lockup, the
+   app's name, and whose name comments are signed with, over the 3px green
+   rule. Windows' own title bar sits above it. */
+.bm-header {
+  display: flex; align-items: center; gap: var(--space-5); flex-shrink: 0;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: var(--rule-heavy) solid var(--border-rule);
 }
-.bm-titlebar-brand { display: flex; align-items: center; gap: var(--space-2); padding-left: 14px; }
-.bm-titlebar-title { font-size: var(--text-small, 13px); font-weight: 500; color: var(--text-body); }
-.bm-titlebar-controls { display: flex; align-items: stretch; height: 100%; -webkit-app-region: no-drag; }
-.bm-titlebar-btn {
-  width: 46px; height: 100%; display: flex; align-items: center; justify-content: center;
-  border: none; background: none; color: var(--gray-600); padding: 0;
-  transition: background var(--motion-fast), color var(--motion-fast);
+.bm-header-brand { display: flex; align-items: center; gap: var(--space-4); }
+.bm-logo { height: 44px; width: auto; display: block; }
+/* The lockup is a JPEG on white, so it keeps a small white plate in Dark. */
+[data-theme="dark"] .bm-logo { padding: 4px 8px; background: var(--white); border-radius: var(--radius-control); }
+.bm-header-app {
+  font-size: 16px; font-weight: 300; color: var(--text-muted);
+  padding-left: var(--space-4); border-left: 1px solid var(--border-hairline);
 }
-.bm-titlebar-btn:hover { background: var(--surface-card-alt); }
-.bm-titlebar-btn.bm-titlebar-close:hover { background: #c0392b; color: #fff; }
-
-/* macOS only: renderTitlebar() skips its own draw close/minimize/maximize
-   buttons there in favor of the real native traffic lights main.js insets
-   into this bar (titleBarStyle:"hiddenInset", trafficLightPosition {x:16,
-   y:14}) -- push the title text clear of that ~16-70px native cluster
-   instead of the plain 14px every other platform uses. */
-.is-mac .bm-titlebar-brand { padding-left: 78px; }
+.bm-header-who { margin-left: auto; font-size: 13px; color: var(--text-body); }
+.bm-header-who strong { font-weight: 600; }
 
 /* ---- App body: rail / main / preview ---- */
 /* grid-template-rows: minmax(0, 1fr) (not the implicit "auto") is what makes
@@ -234,126 +202,107 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   text-transform: uppercase; color: var(--text-caption);
 }
 
-/* ---- Rail ---- */
+/* ---- Side nav ----
+   AB Apps' pale side nav: a recessed tint with a hairline edge, small
+   uppercase section labels, green items, and the active item marked with a
+   mint fill and a green bar on its left edge. */
 .bm-rail {
-  background: var(--surface-rail);
-  color: var(--on-rail);
+  background: var(--surface-card-alt);
+  color: var(--text-body);
+  border-right: 1px solid var(--border-hairline);
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: var(--space-6) var(--space-5) var(--space-5);
+  padding: var(--space-5) var(--space-3) var(--space-4);
   overflow: hidden;
-}
-.bm-rail-brand {
-  display: flex; flex-direction: column; gap: 4px;
-  padding-bottom: var(--space-5); border-bottom: 1px solid var(--border-reversed);
-  flex-shrink: 0;
-}
-.bm-rail-title { font-size: 22px; font-weight: 600; letter-spacing: var(--tracking-tight); }
-.bm-rail-sub {
-  font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 80%, transparent);
 }
 .bm-rail-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable;
   display: flex; flex-direction: column;
 }
 
-.bm-choose-folder-wrap { padding: var(--space-5) 0 0; flex-shrink: 0; }
+.bm-choose-folder-wrap { padding: 0 var(--space-3); flex-shrink: 0; }
 .bm-rail-path-row { margin-top: var(--space-3); display: flex; gap: var(--space-2); align-items: flex-start; }
-.bm-rail-path {
-  font-family: var(--font-condensed); font-size: 12px; line-height: 1.4;
-  color: color-mix(in srgb, var(--on-rail) 75%, transparent); word-break: break-all; flex: 1;
-}
-.bm-rail-hint { font-size: 12px; color: color-mix(in srgb, var(--on-rail) 75%, transparent); margin-top: var(--space-3); line-height: 1.5; }
+.bm-rail-path { font-size: 12px; line-height: 1.4; color: var(--text-muted); word-break: break-all; flex: 1; }
+.bm-rail-hint { font-size: 12px; color: var(--text-muted); margin-top: var(--space-3); line-height: 1.5; }
 .bm-refresh-btn {
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  background: none; border: none; cursor: pointer; color: color-mix(in srgb, var(--on-rail) 75%, transparent); padding: 2px; border-radius: var(--radius-control);
+  background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 2px; border-radius: var(--radius-control);
 }
-.bm-refresh-btn:hover { color: var(--on-rail); background: color-mix(in srgb, var(--on-rail) 12%, transparent); }
+.bm-refresh-btn:hover { color: var(--accent-text); background: var(--green-100); }
 .bm-refresh-btn:disabled { cursor: default; }
 .bm-refresh-btn.spinning svg { animation: bm-spin 0.8s linear infinite; }
 @keyframes bm-spin { to { transform: rotate(360deg); } }
 
 .bm-rail-label {
-  font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 70%, transparent);
-  padding-bottom: var(--space-2);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: var(--space-5) var(--space-3) var(--space-2);
 }
 .bm-rail-label-row {
   display: flex; align-items: baseline; justify-content: space-between;
-  padding-top: var(--space-6);
+  padding: var(--space-5) var(--space-3) var(--space-2);
 }
-.bm-rail-label-row .bm-rail-label { padding-bottom: 0; }
+.bm-rail-label-row .bm-rail-label { padding: 0; }
 .bm-rail-link {
-  cursor: pointer; border-bottom: 1px solid var(--border-reversed); color: var(--on-rail);
+  cursor: pointer; border-bottom: 1px solid var(--border-rule-soft); color: var(--accent-text);
   background: none; border-top: none; border-left: none; border-right: none; padding: 0;
   font-family: inherit; font-size: 12px;
 }
-.bm-rail-link:hover { border-bottom-color: var(--on-rail); }
+.bm-rail-link:hover { color: var(--text-accent); border-bottom-color: var(--border-rule); }
 
 .bm-nav-item {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-  padding: 9px var(--space-3); border-radius: var(--radius-control); font-size: 13px; cursor: pointer;
-  color: color-mix(in srgb, var(--on-rail) 92%, transparent);
+  padding: 8px var(--space-3); border-radius: var(--radius-control); font-size: 13px; font-weight: 500; cursor: pointer;
+  color: var(--accent-text);
+  transition: background var(--motion-fast);
 }
-.bm-nav-item:hover { background: color-mix(in srgb, var(--on-rail) 10%, transparent); }
-.bm-nav-item.active { background: var(--rail-active-bg); color: var(--accent-text); font-weight: 500; }
+.bm-nav-item:hover { background: var(--green-100); }
+.bm-nav-item.active { background: var(--green-100); color: var(--text-accent); box-shadow: inset 3px 0 0 var(--border-rule); }
 /* Special/meta filter row (e.g. "Loose files") rather than a real folder —
    dimmed the same way .bm-tag-nav's "No tags" row is relative to real tags. */
-.bm-nav-item.dim { color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
-.bm-nav-item.dim.active { color: var(--accent-text); } /* same cascade fix .bm-tag-nav.dim.active needed — .dim would otherwise win over .active's color, both being 2-class rules */
+.bm-nav-item.dim { color: var(--text-muted); font-weight: 400; }
+.bm-nav-item.dim.active { color: var(--text-accent); } /* .dim and .active are both 2-class rules; 3 classes wins regardless of order */
 .bm-nav-name { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .bm-nav-name svg { flex-shrink: 0; }
 .bm-nav-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-nav-count { font-size: 12px; flex-shrink: 0; }
+.bm-nav-count { font-size: 12px; font-weight: 400; color: var(--text-muted); flex-shrink: 0; }
 .bm-folder-nav-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-bottom: var(--space-2); }
 
 .bm-tag-nav-list { display: flex; flex-direction: column; }
 .bm-tag-nav {
-  display: flex; align-items: center; gap: var(--space-2); padding: 9px var(--space-3);
-  border-radius: var(--radius-control); font-size: 13px; cursor: pointer; color: color-mix(in srgb, var(--on-rail) 92%, transparent);
+  display: flex; align-items: center; gap: var(--space-2); padding: 7px var(--space-3);
+  border-radius: var(--radius-control); font-size: 13px; cursor: pointer; color: var(--accent-text);
+  transition: background var(--motion-fast);
 }
-.bm-tag-nav:hover { background: color-mix(in srgb, var(--on-rail) 10%, transparent); }
-.bm-tag-nav.active { background: var(--rail-active-bg); color: var(--accent-text); font-weight: 500; }
-.bm-tag-nav.dim { color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
-/* .dim and .active are both 2-class selectors, so .dim (defined later) was
-   winning the cascade on "No tags" when it's active — near-white text on
-   the white active background it inherits from the rule above, invisible.
-   3 classes beats both, regardless of source order. */
-.bm-tag-nav.dim.active { color: var(--accent-text); }
+.bm-tag-nav:hover { background: var(--green-100); }
+.bm-tag-nav.active { background: var(--green-100); color: var(--text-accent); box-shadow: inset 3px 0 0 var(--border-rule); }
+.bm-tag-nav.dim { color: var(--text-muted); }
+.bm-tag-nav.dim.active { color: var(--text-accent); }
 .bm-tag-nav-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-/* Real tags render as their own colored .bm-tag pill (same component the
-   file grid/list/preview use) rather than plain reversed text — the pill's
-   own tint is tuned for a light plate, so it sits on a small light-plate
-   patch just big enough to hold it (--rail-active-bg — same fill the
-   folder-style full-width active row above uses, not literal white, so
-   Midnight's all-gray rail doesn't get a random white pop), not the
-   folder-style full-width fill .bm-tag-nav.active uses (higher specificity
-   than the plain .active rule above, so it wins for pilled rows without
-   touching the untagged/"No tags" row, which has no pill and keeps that
-   original treatment). */
+/* Real tags render as their own colored .bm-tag pill, the same component
+   the file grid/list/preview use. */
 .bm-tag-nav-pilled { justify-content: space-between; }
-.bm-tag-nav-pill-wrap { display: inline-flex; min-width: 0; background: var(--rail-active-bg); border-radius: 999px; padding: 3px; }
+.bm-tag-nav-pill-wrap { display: inline-flex; min-width: 0; }
 .bm-tag-nav-pill-wrap .bm-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bm-tag-nav.bm-tag-nav-pilled.active { background: color-mix(in srgb, var(--on-rail) 18%, transparent); color: color-mix(in srgb, var(--on-rail) 92%, transparent); font-weight: 400; }
-.bm-rail-empty { font-size: 12px; color: color-mix(in srgb, var(--on-rail) 70%, transparent); padding: 4px var(--space-3); }
+.bm-rail-empty { font-size: 12px; color: var(--text-muted); padding: 4px var(--space-3); }
 
 .bm-rail-footer {
-  margin-top: auto; padding-top: var(--space-4); border-top: 1px solid var(--border-reversed);
+  margin-top: auto; padding: var(--space-4) var(--space-3) 0; border-top: 1px solid var(--border-hairline);
   display: flex; flex-direction: column; gap: var(--space-3); flex-shrink: 0;
 }
 .bm-rail-footer-row {
   display: flex; align-items: baseline; justify-content: space-between;
-  font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label);
-  text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 75%, transparent);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
 }
+.bm-rail-footer-row .bm-rail-link { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .bm-rail-footer-links { display: flex; align-items: baseline; gap: var(--space-3); }
-.bm-rail-update-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); }
-.bm-rail-update-error { color: #ffb4a8; }
+.bm-rail-update-row { display: flex; align-items: center; gap: var(--space-2); font-size: 12px; color: var(--text-muted); }
+.bm-rail-update-error { color: var(--text-danger); }
 .bm-rail-update-clickable { cursor: pointer; }
-.bm-rail-update-clickable:hover { color: var(--on-rail); }
+.bm-rail-update-clickable:hover { color: var(--accent-text); }
 
 /* ---- Buttons ---- */
 .bm-btn {
@@ -367,9 +316,9 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-btn-block { width: 100%; }
 .bm-btn-sm { height: 34px; padding: 7px 12px; font-size: 12.5px; }
 
-.bm-btn-primary { background: var(--green-500); color: var(--on-accent); border-color: var(--green-500); }
-.bm-btn-primary:hover:not(:disabled) { background: var(--green-600); }
-.bm-btn-primary:active:not(:disabled) { background: var(--green-700); }
+.bm-btn-primary { background: var(--fill-accent); color: var(--on-accent); border-color: var(--fill-accent); }
+.bm-btn-primary:hover:not(:disabled) { background: var(--fill-accent-hover); border-color: var(--fill-accent-hover); }
+.bm-btn-primary:active:not(:disabled) { background: var(--fill-accent-active); border-color: var(--fill-accent-active); }
 
 /* Maroon is the design system's secondary color — narrow use only: solid
    CTAs (a form's submit button), never structural chrome. Only one solid
@@ -377,7 +326,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
    manage-tags modal's "Save changes" button (#tag-modal-save in
    renderer.js) is the one place this applies today. Deliberately NOT
    theme-dependent — a fixed secondary brand color, like a tag's own chosen
-   color, regardless of light/dark/midnight. */
+   color, regardless of light/dark. */
 .bm-btn-primary.bm-btn-maroon { background: var(--maroon-500); border-color: var(--maroon-500); }
 .bm-btn-primary.bm-btn-maroon:hover:not(:disabled),
 .bm-btn-primary.bm-btn-maroon:active:not(:disabled) { background: var(--maroon-600); border-color: var(--maroon-600); }
@@ -394,11 +343,9 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-btn-ghost { background: none; color: var(--accent-text); border-color: transparent; padding-left: 8px; padding-right: 8px; }
 .bm-btn-ghost:hover:not(:disabled) { background: var(--green-100); }
 
-.bm-btn-danger { background: var(--surface-card); color: #9c4a3d; border-color: #9c4a3d; }
-.bm-btn-danger:hover:not(:disabled) { background: #f6e9e6; }
+.bm-btn-danger { background: var(--surface-card); color: var(--text-danger); border-color: var(--text-danger); }
+.bm-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--text-danger) 10%, var(--surface-card)); }
 
-.bm-btn-reversed { background: transparent; color: var(--on-rail); border-color: color-mix(in srgb, var(--on-rail) 70%, transparent); }
-.bm-btn-reversed:hover:not(:disabled) { background: color-mix(in srgb, var(--on-rail) 12%, transparent); }
 
 /* ---- Form fields ---- */
 .bm-field { display: flex; flex-direction: column; gap: 6px; }
@@ -414,7 +361,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   color: var(--text-body); font-size: 13px; padding: 10px 12px; outline: none; height: 40px;
   font-family: var(--font-sans);
 }
-.bm-input::placeholder { color: var(--gray-400); }
+.bm-input::placeholder { color: var(--text-muted); opacity: 0.8; }
 .bm-input:focus, .bm-select:focus { border-color: var(--accent-text); }
 .bm-select { cursor: pointer; }
 .bm-select:disabled, .bm-input:disabled { opacity: 0.45; cursor: default; }
@@ -440,7 +387,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-view-toggle-btn + .bm-view-toggle-btn { border-left: 1px solid var(--border-hairline); }
 .bm-view-toggle-btn:hover:not(.active):not(:disabled) { background: var(--surface-card-alt); color: var(--text-body); }
-.bm-view-toggle-btn.active { background: var(--green-500); color: var(--on-accent); }
+.bm-view-toggle-btn.active { background: var(--fill-accent); color: var(--on-accent); }
 .bm-view-toggle-btn:disabled { opacity: 0.45; cursor: default; }
 
 .bm-rule-row {
@@ -472,7 +419,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   cursor: pointer; overflow: hidden; position: relative; display: flex; flex-direction: column;
   transition: border-color var(--motion-fast);
 }
-.bm-card:hover { border-color: var(--green-300); }
+.bm-card:hover { border-color: var(--border-rule-soft); }
 .bm-card.selected { border-color: var(--accent-text); box-shadow: 0 0 0 1px var(--accent-text); }
 .bm-card-thumb {
   height: 132px; flex-shrink: 0; background: var(--surface-card-alt); border-bottom: 1px solid var(--border-hairline);
@@ -489,7 +436,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   cursor: pointer; opacity: 0; transition: opacity var(--motion-fast), background var(--motion-fast);
 }
 .bm-card:hover .bm-card-open { opacity: 1; }
-.bm-card-open:hover { background: var(--green-500); color: var(--on-accent); }
+.bm-card-open:hover { background: var(--fill-accent); color: var(--on-accent); }
 .bm-card-body { padding: var(--space-3) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: 6px; }
 .bm-card-name {
   font-size: 13px; font-weight: 500; color: var(--text-body); line-height: 1.3;
@@ -721,7 +668,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .bm-mini-thumb svg { width: 26px; height: 32px; }
-.bm-mini-card:hover .bm-mini-thumb { border-color: var(--green-300); }
+.bm-mini-card:hover .bm-mini-thumb { border-color: var(--border-rule-soft); }
 .bm-mini-name {
   font-size: 10.5px; color: var(--text-caption); max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; text-align: center;
@@ -769,7 +716,7 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 }
 .bm-theme-toggle-btn + .bm-theme-toggle-btn { border-left: 1px solid var(--border-hairline); }
 .bm-theme-toggle-btn:hover:not(.active) { background: var(--surface-card-alt); color: var(--text-body); }
-.bm-theme-toggle-btn.active { background: var(--accent-text); color: var(--on-accent); font-weight: 500; }
+.bm-theme-toggle-btn.active { background: var(--fill-accent); color: var(--on-accent); font-weight: 500; }
 .bm-modal-header { padding: var(--space-6) var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); flex-shrink: 0; }
 .bm-modal-title { font-size: 19px; font-weight: 600; color: var(--text-heading); }
 .bm-modal-sub { font-size: 13px; color: var(--text-muted); max-width: 52ch; line-height: 1.5; }
@@ -836,12 +783,12 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
   border-bottom: 1px solid var(--border-hairline);
 }
 .bm-about-chrome-title { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); }
-.bm-about-close { width: 42px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--gray-600); background: none; border: none; cursor: pointer; }
+.bm-about-close { width: 42px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); background: none; border: none; cursor: pointer; }
 .bm-about-close:hover { background: var(--surface-card-alt); }
-.bm-about-band { background: var(--surface-rail); color: var(--on-rail); padding: var(--space-6); display: flex; gap: var(--space-5); align-items: center; }
+.bm-about-band { background: var(--fill-accent); color: var(--white); padding: var(--space-6); display: flex; gap: var(--space-5); align-items: center; }
 .bm-about-title { font-size: 26px; font-weight: 600; letter-spacing: var(--tracking-tight); }
-.bm-about-tagline { font-size: 13px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); }
-.bm-about-version { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 75%, transparent); }
+.bm-about-tagline { font-size: 13px; color: color-mix(in srgb, var(--white) 85%, transparent); }
+.bm-about-version { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: color-mix(in srgb, var(--white) 75%, transparent); }
 .bm-about-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); max-height: calc(100vh - 260px); overflow-y: auto; }
 .bm-about-desc { font-size: 13px; color: var(--text-muted); max-width: 56ch; line-height: 1.5; }
 .bm-about-credits-label { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); border-bottom: 1px solid var(--border-hairline); padding-bottom: 6px; margin-bottom: var(--space-3); }

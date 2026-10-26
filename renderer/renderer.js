@@ -18,10 +18,6 @@ const ICONS = {
   list: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><line x1="4" y1="6" x2="4.01" y2="6"/><line x1="4" y1="12" x2="4.01" y2="12"/><line x1="4" y1="18" x2="4.01" y2="18"/></svg>`,
   sortAsc: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"/></svg>`,
   sortDesc: `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
-  winMinimize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0" y="4.5" width="10" height="1" fill="currentColor"/></svg>`,
-  winMaximize: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor"/></svg>`,
-  winRestore: `<svg width="10" height="10" viewBox="0 0 10 10"><rect x="2.5" y="0.5" width="7" height="7" fill="none" stroke="currentColor"/><path d="M0.5 2.5V9.5H7.5" fill="none" stroke="currentColor"/></svg>`,
-  winClose: `<svg width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5 9.5 9.5 M9.5 0.5 0.5 9.5" stroke="currentColor"/></svg>`,
   eye: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>`,
   rotate: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 7.6A7.5 7.5 0 1 0 20 12"/><polyline points="21 4 20 8 16 7"/></svg>`,
   chevronLeft: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>`,
@@ -153,7 +149,7 @@ const state = {
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
   abAppsName: "", // name of whoever's signed in to AB Apps, if anyone — overrides commenterName when set, see commentSignerName()
   settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autoexport folder)
-  theme: "system", // "system" | "light" | "dark" | "midnight" — per-device, see main.js's settings.json and resolveTheme()
+  theme: "system", // "system" | "light" | "dark" — per-device, see main.js's settings.json and resolveTheme()
   autoexportFolder: "", // per-device absolute folder the Autoexport button files things into — see main.js's settings.json; asked for on first use, changeable from Options
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
@@ -164,7 +160,6 @@ const state = {
   preReviewAnchor: null, // ditto for state.selectAnchor
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
-  windowMaximized: false,
 };
 
 // Brand green and brand gray first (the system's two native tones), then a run of
@@ -450,7 +445,7 @@ function hsvToRgb(h, s, v) {
 // This is a general rule (works for any color a user picks), not a lookup of
 // specific tag names.
 function chipTone(hex) {
-  if (!hex) return { bg: "var(--green-100)", color: "var(--green-500)", border: "transparent" };
+  if (!hex) return { bg: "var(--green-100)", color: "var(--accent-text)", border: "transparent" };
   const { r, g, b } = hexToRgb(hex);
   const lin = (c) => {
     c /= 255;
@@ -458,9 +453,9 @@ function chipTone(hex) {
   };
   const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
   if (L > 0.55) {
-    return { bg: "var(--white)", border: hex, color: `color-mix(in srgb, ${hex} 55%, black)` };
+    return { bg: "var(--surface-card)", border: hex, color: `color-mix(in srgb, ${hex} 55%, var(--chip-pale-ink))` };
   }
-  return { bg: `color-mix(in srgb, ${hex} 14%, white)`, border: "transparent", color: hex };
+  return { bg: `color-mix(in srgb, ${hex} var(--chip-tint), var(--surface-card))`, border: "transparent", color: `color-mix(in srgb, ${hex} var(--chip-ink), white)` };
 }
 
 function tagStyleAttr(tagName) {
@@ -1748,7 +1743,7 @@ function render() {
   liveReviewPlate = null;
 
   app.innerHTML = "";
-  app.appendChild(renderTitlebar());
+  app.appendChild(renderHeader());
   // While the startup last-folder lookup and its first file scan are in flight,
   // show a single loading screen instead of the rail/main/preview. Rendering the
   // rail mid-scan (folder set, but files/tags still empty) briefly shows "0
@@ -1804,50 +1799,26 @@ function renderLoadingScreen() {
   `);
 }
 
-// True on macOS/Windows, computed once (not per-render): navigator.platform
-// is a plain web API, available in the renderer with no preload/IPC surface
-// of its own even under contextIsolation. IS_MAC is set as a class on <html>
-// immediately (not deferred to init()) for the same reason applyTheme() runs
-// before the first render() -- CSS keyed off .is-mac (see styles.css's
-// .is-mac .bm-titlebar-brand) needs to be correct from the very first paint.
-const IS_MAC = /Mac/i.test(navigator.platform);
-const IS_WINDOWS = /Win/i.test(navigator.platform);
-document.documentElement.classList.toggle("is-mac", IS_MAC);
-
-// ---- Title bar ----
-// The window is frameless only where neither OS offers a native alternative
-// (Linux) -- there, the app draws its own chrome and wires the three
-// controls to real window operations over IPC. On macOS, main.js instead
-// uses titleBarStyle:"hiddenInset" (real traffic lights); on Windows,
-// titleBarStyle:"hidden" + titleBarOverlay (real Fluent caption buttons,
-// Snap Layouts included) -- either way the OS insets native buttons into
-// this same custom bar, so the hand-drawn ones would be redundant (and, on
-// Windows, would literally overlap the native ones in the same top-right
-// corner) and are skipped entirely; only the drag region and title text are
-// still ours.
-function renderTitlebar() {
-  const hasNativeButtons = IS_MAC || IS_WINDOWS;
-  const bar = el(`
-    <div class="bm-titlebar">
-      <div class="bm-titlebar-brand">
-        ${appMark(18)}
-        <span class="bm-titlebar-title">BillManager</span>
+// ---- Header ----
+// The same header as AB Apps and the other newer apps: the logo lockup, the
+// app's name, and on the right whose name new comments are signed with (see
+// commentSignerName) -- AB Apps' sign-in when there is one.
+function renderHeader() {
+  const name = commentSignerName();
+  const who = !name
+    ? ""
+    : state.abAppsName
+      ? `Signed in as <strong>${escapeHtml(name)}</strong>`
+      : `Comments signed as <strong>${escapeHtml(name)}</strong>`;
+  return el(`
+    <header class="bm-header">
+      <div class="bm-header-brand">
+        <img class="bm-logo" src="assets/logo-primary-lockup.jpg" alt="Anabaptist Brotherhood" />
+        <span class="bm-header-app">BillManager</span>
       </div>
-      ${
-        hasNativeButtons
-          ? ""
-          : `<div class="bm-titlebar-controls">
-        <button class="bm-titlebar-btn" id="win-minimize" title="Minimize">${ICONS.winMinimize}</button>
-        <button class="bm-titlebar-btn" id="win-maximize" title="${state.windowMaximized ? "Restore" : "Maximize"}">${state.windowMaximized ? ICONS.winRestore : ICONS.winMaximize}</button>
-        <button class="bm-titlebar-btn bm-titlebar-close" id="win-close" title="Close">${ICONS.winClose}</button>
-      </div>`
-      }
-    </div>
+      <div class="bm-header-who">${who}</div>
+    </header>
   `);
-  bar.querySelector("#win-minimize")?.addEventListener("click", () => window.api.windowMinimize());
-  bar.querySelector("#win-maximize")?.addEventListener("click", () => window.api.windowMaximizeToggle());
-  bar.querySelector("#win-close")?.addEventListener("click", () => window.api.windowClose());
-  return bar;
 }
 
 // ---- Updates ----
@@ -1926,13 +1897,13 @@ function renderRailFooter() {
   } else if (s.state === "downloading") {
     action = `<span class="bm-rail-update-row">${ICONS.download} Downloading… ${s.percent ?? 0}%</span>`;
   } else if (s.state === "downloaded") {
-    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-restart">${ICONS.check} Restart to install</button>`;
+    action = `<button class="bm-btn bm-btn-secondary bm-btn-sm bm-btn-block" id="update-restart">${ICONS.check} Restart to install</button>`;
   } else if (s.state === "not-available") {
     action = `<span class="bm-rail-update-row bm-rail-update-clickable" id="update-recheck">${ICONS.check} Up to date</span>`;
   } else if (s.state === "error") {
     action = `<span class="bm-rail-update-row bm-rail-update-error bm-rail-update-clickable" id="update-recheck" title="${(s.message || "").replace(/"/g, "&quot;")}">Update check failed</span>`;
   } else {
-    action = `<button class="bm-btn bm-btn-reversed bm-btn-sm bm-btn-block" id="update-check">Check for updates</button>`;
+    action = `<button class="bm-btn bm-btn-secondary bm-btn-sm bm-btn-block" id="update-check">Check for updates</button>`;
   }
 
   const footer = el(`
@@ -1971,13 +1942,9 @@ function renderRail() {
   const looseCount = state.files.filter((f) => f.dir === "").length;
   const rail = el(`
     <aside class="bm-rail">
-      <div class="bm-rail-brand">
-        <div class="bm-rail-title">BillManager</div>
-        <div class="bm-rail-sub">Anabaptist Brotherhood · File Archive</div>
-      </div>
       <div class="bm-rail-scroll">
         <div class="bm-choose-folder-wrap">
-          <button class="bm-btn bm-btn-reversed bm-btn-block" id="choose-folder">${ICONS.upload} Choose folder</button>
+          <button class="bm-btn bm-btn-secondary bm-btn-block" id="choose-folder">${ICONS.upload} Choose folder</button>
           ${
             state.folder
               ? `<div class="bm-rail-path-row">
@@ -3344,13 +3311,11 @@ const THEME_CHOICES = [
   { value: "system", label: "System" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
-  { value: "midnight", label: "Midnight" },
 ];
 
 // "system" (the default -- see init()'s getTheme() fallback) has no CSS
 // palette of its own -- it maps 1:1 onto plain light or dark, matching the
-// OS's own preference, and never resolves to midnight (that's only ever
-// reached by an explicit choice). matchMedia's "prefers-color-scheme: dark"
+// OS's own preference. matchMedia's "prefers-color-scheme: dark"
 // is the renderer-side read of that OS preference -- see main.js's
 // nativeTheme.shouldUseDarkColors for the equivalent used pre-paint, in the
 // main process, before this window (and so this API) exists yet.
@@ -3360,7 +3325,7 @@ function resolveTheme(pref) {
 }
 
 // Sets the <html data-theme> attribute the whole stylesheet keys off of (see
-// the [data-theme="dark"]/[data-theme="midnight"] blocks at the top of
+// the [data-theme="dark"] block at the top of
 // styles.css) — resolved "light" matches no block, which is exactly right
 // since :root already *is* the light theme. Takes the raw preference
 // (including "system") and resolves it -- state.theme itself keeps the raw
@@ -3553,7 +3518,7 @@ function renderCommenterNameModal() {
   applyTheme(state.theme);
   // Keeps "System" in sync with the OS while the app stays open, not just at
   // launch -- e.g. macOS switching to Dark Mode at sunset. Guarded so it
-  // never overrides an explicit Light/Dark/Midnight choice.
+  // never overrides an explicit Light/Dark choice.
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (state.theme === "system") applyTheme(state.theme);
   });
@@ -3567,11 +3532,6 @@ function renderCommenterNameModal() {
   state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
-  state.windowMaximized = await window.api.windowIsMaximized();
-  window.api.onWindowState((s) => {
-    state.windowMaximized = s.maximized;
-    render();
-  });
 
   const lastFolder = await window.api.getLastFolder();
   if (lastFolder) {
