@@ -829,16 +829,6 @@ a:hover { color: var(--green-700); border-bottom-color: var(--green-500); }
 .bm-about-title { font-size: 26px; font-weight: 600; letter-spacing: var(--tracking-tight); }
 .bm-about-tagline { font-size: 13px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); }
 .bm-about-version { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: color-mix(in srgb, var(--on-rail) 75%, transparent); }
-.bm-about-rollback { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
-.bm-about-rollback-btn {
-  display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
-  background: none; border: none; border-bottom: 1px solid color-mix(in srgb, var(--on-rail) 40%, transparent); padding: 0;
-  font-family: inherit; font-size: 12px; color: color-mix(in srgb, var(--on-rail) 85%, transparent); cursor: pointer;
-}
-.bm-about-rollback-btn svg { flex-shrink: 0; }
-.bm-about-rollback-btn:hover:not(:disabled) { color: var(--on-rail); border-bottom-color: var(--on-rail); }
-.bm-about-rollback-btn:disabled { opacity: 0.5; cursor: default; }
-.bm-about-rollback-status { font-size: 11px; color: color-mix(in srgb, var(--on-rail) 60%, transparent); }
 .bm-about-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); max-height: calc(100vh - 260px); overflow-y: auto; }
 .bm-about-desc { font-size: 13px; color: var(--text-muted); max-width: 56ch; line-height: 1.5; }
 .bm-about-credits-label { font-family: var(--font-condensed); font-size: 12px; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-caption); border-bottom: 1px solid var(--border-hairline); padding-bottom: 6px; margin-bottom: var(--space-3); }

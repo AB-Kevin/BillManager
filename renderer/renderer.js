@@ -143,7 +143,6 @@ const state = {
   preReviewAnchor: null, // ditto for state.selectAnchor
   appVersion: "",
   updateStatus: { state: "idle" }, // idle | checking | available | available-manual (Mac) | not-available | downloading | downloaded | error
-  rollbackStatus: { state: "idle" }, // idle | checking | downloading | installing | manual (Mac) | error
   windowMaximized: false,
 };
 
@@ -1870,39 +1869,6 @@ function updateStatusLabel() {
   return "";
 }
 
-// ---- Roll back to previous version ----
-// Shown as a small link/status pair right under the version number in the
-// About window. Unlike the update flow above, this is user-initiated only
-// and always asks for confirmation first, since it quits the app and
-// replaces it with an older build.
-function rollbackStatusLabel() {
-  const s = state.rollbackStatus;
-  if (s.state === "checking") return "Looking up the previous version…";
-  if (s.state === "downloading") return `Downloading ${s.version ?? "previous version"}… ${s.percent ?? 0}%`;
-  if (s.state === "installing") return "Quitting to roll back…";
-  if (s.state === "manual") return `Opened ${s.version} on GitHub — install it by hand`;
-  if (s.state === "error") return `Roll back failed: ${s.message || ""}`;
-  return "";
-}
-
-function rollbackInProgress() {
-  return ["checking", "downloading", "installing"].includes(state.rollbackStatus.state);
-}
-
-async function rollbackToPreviousVersion() {
-  if (rollbackInProgress()) return;
-  if (
-    !confirm(
-      "Roll back to the version before the current release?\n\nBillManager will download it from GitHub, then quit and reinstall it. Any unsaved changes should be saved first."
-    )
-  ) {
-    return;
-  }
-  state.rollbackStatus = { state: "checking" };
-  render();
-  await window.api.rollbackToPreviousVersion();
-}
-
 function renderRailFooter() {
   const s = state.updateStatus;
   let action;
@@ -3226,8 +3192,6 @@ function closeAbout() {
 
 function renderAbout() {
   const status = updateStatusLabel();
-  const rollbackBusy = rollbackInProgress();
-  const rollbackCaption = rollbackStatusLabel() || "This may take a while.";
   const overlay = el(`
     <div class="bm-modal-overlay" id="about-overlay">
       <div class="bm-about-modal">
@@ -3241,10 +3205,6 @@ function renderAbout() {
             <div class="bm-about-title">BillManager</div>
             <div class="bm-about-tagline">Anabaptist Brotherhood internal software</div>
             <div class="bm-about-version">Version ${state.appVersion}${status ? ` · ${status}` : ""}</div>
-            <div class="bm-about-rollback">
-              <button class="bm-about-rollback-btn" id="about-rollback-btn" ${rollbackBusy ? "disabled" : ""}>${ICONS.undo} Roll back to previous version</button>
-              <span class="bm-about-rollback-status">${rollbackCaption}</span>
-            </div>
           </div>
         </div>
         <div class="bm-about-body">
@@ -3277,7 +3237,6 @@ function renderAbout() {
     e.preventDefault();
     window.api.openRepo();
   });
-  overlay.querySelector("#about-rollback-btn").addEventListener("click", rollbackToPreviousVersion);
 
   return overlay;
 }
@@ -3524,10 +3483,6 @@ function renderCommenterNameModal() {
   window.api.onAbAppsName((name) => setAbAppsName(name));
   state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
-  window.api.onRollbackStatus((status) => {
-    state.rollbackStatus = status;
-    render();
-  });
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
   state.windowMaximized = await window.api.windowIsMaximized();
   window.api.onWindowState((s) => {

@@ -53,12 +53,6 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("update-status", listener);
   },
   openRepo: () => ipcRenderer.invoke("open-repo-page"),
-  rollbackToPreviousVersion: () => ipcRenderer.invoke("rollback-to-previous-version"),
-  onRollbackStatus: (callback) => {
-    const listener = (event, status) => callback(status);
-    ipcRenderer.on("rollback-status", listener);
-    return () => ipcRenderer.removeListener("rollback-status", listener);
-  },
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximizeToggle: () => ipcRenderer.invoke("window-maximize-toggle"),
   windowClose: () => ipcRenderer.invoke("window-close"),
