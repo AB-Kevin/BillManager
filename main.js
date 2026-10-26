@@ -1192,10 +1192,31 @@ function unhideFile(file) {
   } catch {}
 }
 
+// A small JSON file on the shared OneDrive folder can be briefly locked by
+// the sync client (or by another computer's app mid-write) -- same
+// transient lock update-file-meta retries around (see META_WRITE_RETRIES).
+// These writes are tiny and synchronous, so the short wait between tries
+// just blocks in place.
+const JSON_WRITE_RETRIES = 3;
+const JSON_WRITE_RETRY_DELAY_MS = 300;
+
+function writeJsonRetrying(file, data, { hidden = false } = {}) {
+  const text = JSON.stringify(data, null, 2);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      if (hidden) unhideFile(file);
+      fs.writeFileSync(file, text, "utf8");
+      if (hidden) hideFile(file);
+      return;
+    } catch (e) {
+      if (attempt >= JSON_WRITE_RETRIES || !["EBUSY", "EPERM", "EACCES"].includes(e.code)) throw e;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, JSON_WRITE_RETRY_DELAY_MS);
+    }
+  }
+}
+
 function writeTagsFile(file, tags) {
-  unhideFile(file);
-  fs.writeFileSync(file, JSON.stringify({ tags }, null, 2), "utf8");
-  hideFile(file);
+  writeJsonRetrying(file, { tags }, { hidden: true });
 }
 
 // Where predefined tags were stored by a previous version of the app: one file
