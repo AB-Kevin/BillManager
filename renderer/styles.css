@@ -267,7 +267,10 @@ a:hover { color: var(--text-accent); border-bottom-color: var(--border-rule); }
 .bm-nav-name svg { flex-shrink: 0; }
 .bm-nav-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bm-nav-count { font-size: 12px; font-weight: 400; color: var(--text-muted); flex-shrink: 0; }
-.bm-folder-nav-list { max-height: 190px; overflow-y: auto; overflow-x: hidden; margin-bottom: var(--space-2); }
+/* No overflow/max-height here: inside .bm-rail-scroll's flex column, a
+   scrolling child is allowed to shrink to nothing on a short window, which
+   is how the folder list used to vanish. The rail itself scrolls instead. */
+.bm-folder-nav-list { display: flex; flex-direction: column; flex-shrink: 0; margin-bottom: var(--space-2); }
 
 .bm-tag-nav-list { display: flex; flex-direction: column; }
 .bm-tag-nav {
@@ -689,7 +692,7 @@ a:hover { color: var(--text-accent); border-bottom-color: var(--border-rule); }
 }
 .bm-comment-area:focus { border-color: var(--accent-text); }
 .bm-comment-remove { flex-shrink: 0; border: none; background: none; color: var(--text-muted); cursor: pointer; display: flex; padding: 4px; margin-top: 2px; }
-.bm-comment-remove:hover { color: #9c4a3d; }
+.bm-comment-remove:hover { color: var(--text-danger); }
 /* ---- Modals (shared) ---- */
 .bm-modal-overlay { position: fixed; inset: 0; background: var(--overlay-scrim); display: flex; align-items: center; justify-content: center; z-index: 50; }
 
@@ -732,9 +735,9 @@ a:hover { color: var(--text-accent); border-bottom-color: var(--border-rule); }
   height: 40px;
 }
 .bm-shortcut-btn:hover { border-color: var(--accent-text); color: var(--accent-text); }
-.bm-shortcut-btn.recording { border-color: #9c4a3d; color: #9c4a3d; background: #f6e9e6; }
+.bm-shortcut-btn.recording { border-color: var(--text-danger); color: var(--text-danger); background: color-mix(in srgb, var(--text-danger) 10%, var(--surface-card)); }
 .bm-tagrow-remove { flex-shrink: 0; border: none; background: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; }
-.bm-tagrow-remove:hover { color: #9c4a3d; }
+.bm-tagrow-remove:hover { color: var(--text-danger); }
 .bm-add-tagrow-btn {
   display: flex; align-items: center; gap: 6px; border: 1px dashed var(--border-hairline); background: none;
   color: var(--accent-text); border-radius: var(--radius-control); padding: 10px; font-size: 12.5px; cursor: pointer;
