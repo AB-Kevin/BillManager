@@ -1,7 +1,7 @@
 # BillManager — desktop file manager
 Private - Anabaptist Brotherhood internal use only
 
-A Windows and Mac desktop app (built with Electron) that browses a real folder on your
+A Windows desktop app (built with Electron) that browses a real folder on your
 computer, previews PDFs/JPGs/PNGs, and lets you tag and comment on each
 file. Tags and comments are written directly into each file's own native
 metadata (PDF Info dictionary Keywords/Subject; JPG/PNG Keywords/Comment) via
@@ -41,47 +41,28 @@ electron-builder downloads a small packaging tool. Double-click the generated
 installer to install BillManager like any other Windows app — it'll show up in
 your Start Menu and can be uninstalled from Windows Settings normally.
 
-## 3. Build a standalone Mac app (.dmg/.zip)
-
-Mac installers must be built on a Mac (electron-builder can't cross-build them
-from Windows). On a Mac, run:
-
-```
-npm run dist:mac
-```
-
-This produces a `.dmg` and `.zip` in the `dist/` folder. The build isn't
-signed with a paid Apple Developer ID, so on first launch macOS Gatekeeper
-will warn that the app is from an unidentified developer. To open it anyway:
-
-- Right-click (or Control-click) the app → **Open** → confirm in the dialog
-  that appears, **or**
-- **System Settings → Privacy & Security** → scroll down → **Open Anyway**.
-
-This is only needed once per machine, on the very first launch.
-
-Because the build isn't signed with a paid Developer ID, in-app auto-update
-also can't silently install a new version on Mac (that part of
-electron-updater requires real signing). Mac's "Update" button still detects
-when a new version is out, but clicking it just opens the GitHub release page
-so the new `.dmg` can be downloaded and installed the normal way — the same
-Gatekeeper "Open Anyway" step applies again on that reinstall. Windows is
-unaffected and keeps installing updates in-app.
-
-## Releasing (both platforms, from either OS)
+## Releasing
 
 Releases are automated via [.github/workflows/release.yml](.github/workflows/release.yml).
-Bump `"version"` in `package.json`, commit, then push a matching tag:
+Once your changes are committed:
 
 ```
-git tag v1.2.2
-git push origin v1.2.2
+npm version patch       # or minor / major: bumps the version, commits, and tags vX.Y.Z
+git push --follow-tags  # or run `git config push.followTags true` once, then plain `git push`
 ```
 
-GitHub Actions then builds the Windows `.exe` (on a Windows runner) and the
-Mac `.dmg`/`.zip` (on a macOS runner) and publishes both to the GitHub Release
-for that tag — no local Mac needed. `electron-updater` picks the right asset
-per platform automatically, so this can be run entirely from Windows.
+GitHub Actions then builds the Windows installer and publishes it to the
+GitHub Release for that tag as `BillManager-Setup-X.Y.Z.exe`, with its
+`.blockmap` and a `latest.yml` beside it. The release is created as a draft
+and published only once all three files are attached, so the in-app updater
+and AB Apps never find a latest release without `latest.yml`. The build stops
+without publishing if the tag doesn't match the version in `package.json`.
+
+- `npm version` stops without changing anything if there are uncommitted
+  changes.
+- Keep the tag as `vX.Y.Z` and leave `artifactName` in `package.json` as it
+  is: the workflow uploads the installer by that name, and `latest.yml`
+  points the updater at it.
 
 ## Notes
 
@@ -103,8 +84,8 @@ per platform automatically, so this can be run entirely from Windows.
   reopened — until then it's held out of sight so Undo can bring it back.
   Checkbox-select several files to move or delete them as one batch (and undo
   the whole batch as one step) from the bulk-actions bar above the grid.
-- Installer icons live in `build/icon.ico` (Windows) and `build/icon.icns`
-  (Mac), referenced under `"win"`/`"mac"` in `package.json`. `build/icon.png`
+- The installer icon lives in `build/icon.ico`, referenced under `"win"` in
+  `package.json`. `build/icon.png`
   is a flat 512px reference PNG of the same mark, not consumed by the build.
 - "About" in the sidebar (below the version number) shows the app version,
   update status, a short description, credits, and a link to this repo.

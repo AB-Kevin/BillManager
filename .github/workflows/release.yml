@@ -1,99 +1,57 @@
+# Builds the Windows installer and publishes it as a GitHub release whenever a
+# version tag is pushed. Create one with `npm version patch` (or minor/major)
+# and push it with `git push --follow-tags`.
 name: Release
-
-# Builds the Windows (.exe) and macOS (.dmg/.zip) installers and publishes
-# them both to the GitHub Release for the pushed tag.
-#
-# Usage: bump "version" in package.json, commit, then:
-#   git tag v1.2.2
-#   git push origin v1.2.2
-# This can be run from Windows (or anywhere) — GitHub's own macOS runner
-# builds the Mac installer, no local Mac required.
-#
-# Two known electron-builder GitHub-publish gotchas this workflow works around:
-#
-# 1. windows and mac run one after another (not in parallel): electron-builder's
-#    --publish step both creates/updates the same GitHub Release for the tag, and
-#    two jobs doing that at the same time can race and silently drop an asset
-#    (bit us once — the Mac job's .dmg and latest-mac.yml never made it into a
-#    release even though its job reported success). `needs:` below serializes
-#    them so only one build job is ever touching the release at a time.
-#
-# 2. electron-builder itself has a known bug (electron-userland/electron-builder
-#    #6676) where its "does a release already exist for this tag" lookup can
-#    race/miss right after creating one, so it creates a SECOND release with the
-#    same tag and splits assets across both (bit us too — the Windows job alone
-#    split its own .exe and .exe.blockmap across two separate "v1.2.3" releases).
-#    The create-release job below pre-creates the release before either build
-#    runs, so both build jobs only ever have to find-and-upload to one that
-#    already fully exists — no create race left for electron-builder to lose.
 
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch: {}
+      - 'v*'
 
 permissions:
-  contents: write
+  contents: write # create the release and upload the installer
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Ensure a GitHub Release exists for this version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v$(node -p "require('./package.json').version")"
-          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release $TAG already exists, reusing it."
-          else
-            gh release create "$TAG" --repo "${{ github.repository }}" --title "$TAG" --notes ""
-          fi
-
-  release-windows:
-    needs: create-release
+  windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
-      - run: npm ci
-
-      - name: Build & publish (Windows)
-        run: npm run release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  release-mac:
-    needs: release-windows
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-
-      - run: npm ci
-
-      - name: Build & publish (macOS)
-        run: npm run release:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify Mac auto-update assets were actually published
+      - name: Check the tag matches package.json
+        shell: bash
         run: |
-          for f in dist/latest-mac.yml dist/*.dmg; do
-            if ! ls $f >/dev/null 2>&1; then
-              echo "::error::Expected artifact missing: $f (Mac release build produced no such file — check the electron-builder output above)"
-              exit 1
-            fi
-          done
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Build the installer
+        run: npm run dist
+
+      - name: Publish the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # latest.yml lists the installer's size and SHA-512 digest. The app's
+          # update check and AB Apps both read it from the latest release. The
+          # blockmap lets the app's updater download only what changed.
+          installer="dist/BillManager-Setup-${GITHUB_REF_NAME#v}.exe"
+          files=("$installer" "$installer.blockmap" dist/latest.yml)
+          # Re-running this job replaces the files on the existing release.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            # Published only once all the files are attached, so the latest
+            # release never lacks latest.yml.
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --draft --title "BillManager $GITHUB_REF_NAME" --generate-notes
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          fi

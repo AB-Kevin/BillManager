@@ -7,10 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "release": "electron-builder --win --publish always",
-    "release:mac": "electron-builder --mac --publish always"
+    "dist": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "electron": "^43.4.1",
@@ -30,17 +27,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "build/icon.icns",
-      "identity": "-",
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "BillManager-Setup-${version}.${ext}"
     },
     "publish": {
       "provider": "github",
