@@ -33,6 +33,8 @@ jobs:
 
       - run: npm ci
 
+      - run: npm test
+
       - name: Build the installer
         run: npm run dist
 

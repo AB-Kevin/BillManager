@@ -22,6 +22,7 @@ Open a terminal (Command Prompt or PowerShell) in this folder and run:
 ```
 npm install
 npm start
+npm test    # the build settings AB Apps and releases depend on
 ```
 
 This installs Electron and launches the app in a window. Use "Choose folder"
@@ -47,7 +48,7 @@ Releases are automated via [.github/workflows/release.yml](.github/workflows/rel
 Once your changes are committed:
 
 ```
-npm version patch       # or minor / major: bumps the version, commits, and tags vX.Y.Z
+npm version patch       # or minor / major: runs the tests, bumps the version, commits, and tags vX.Y.Z
 git push --follow-tags  # or run `git config push.followTags true` once, then plain `git push`
 ```
 
@@ -56,7 +57,8 @@ GitHub Release for that tag as `BillManager-Setup-X.Y.Z.exe`, with its
 `.blockmap` and a `latest.yml` beside it. The release is created as a draft
 and published only once all three files are attached, so the in-app updater
 and AB Apps never find a latest release without `latest.yml`. The build stops
-without publishing if the tag doesn't match the version in `package.json`.
+without publishing if the tag doesn't match the version in `package.json`, or
+if a test fails.
 
 - `npm version` stops without changing anything if there are uncommitted
   changes.

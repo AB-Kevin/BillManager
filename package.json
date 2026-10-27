@@ -3,14 +3,17 @@
   "version": "2.3.0",
   "description": "BillManager - a desktop file manager with preview, tagging, and notes",
   "main": "main.js",
-  "author": "",
-  "license": "MIT",
+  "author": "Anabaptist Brotherhood",
+  "license": "UNLICENSED",
+  "private": true,
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --publish never"
+    "dist": "electron-builder --win --publish never",
+    "test": "node --test --test-force-exit \"test/*.test.js\"",
+    "preversion": "npm test"
   },
   "devDependencies": {
-    "electron": "^43.4.1",
+    "electron": "^44.9.3",
     "electron-builder": "^26.15.3"
   },
   "build": {
