@@ -83,6 +83,16 @@ if a test fails.
   original in the folder to match. The autoexport folder is asked for the
   first time and can be changed under Options. Undo removes the copy and
   restores the original name.
+- **Long-term archive** (under Options) keeps the catalog's archive folder
+  from growing forever, so new computers have less to download. Choose the
+  archive folder inside the catalog, a long-term archive folder outside it,
+  and a number of days: "Archive now" moves the bills in the archive folder
+  that haven't been modified in that many days out to the long-term archive,
+  keeping any subfolders. It can also run once a week at a set day and time,
+  on whichever computer has BillManager open then (or the next one opened, if
+  none was). The settings belong to the catalog and are shared by everyone,
+  in a hidden `.catalog-archive.json` beside `.catalog-tags.json`. A computer
+  that can't reach the long-term archive folder says so and moves nothing.
 - **Autorename** renames the selected files to the current date and time,
   keeping their extensions, to clear a name clash before moving them. Several
   files renamed together get ` (1)`, ` (2)` and so on.

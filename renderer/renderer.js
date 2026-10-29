@@ -148,9 +148,10 @@ const state = {
   commenterModalOpen: false, // shown unskippably on first launch (no commenterName yet), or on demand from the Options dialog
   commenterNameDraft: "", // working copy of commenterName while the name modal is open
   abAppsName: "", // name of whoever's signed in to AB Apps, if anyone — overrides commenterName when set, see commentSignerName()
-  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (currently comment name + theme + autoexport folder)
+  settingsModalOpen: false, // the rail's "Options" dialog — a home for per-device settings (comment name, theme, autoexport folder, long-term archive)
   theme: "system", // "system" | "light" | "dark" — per-device, see main.js's settings.json and resolveTheme()
   autoexportFolder: "", // per-device absolute folder the Autoexport button files things into — see main.js's settings.json; asked for on first use, changeable from Options
+  archive: {}, // the open catalog's long-term archive settings + last run (or { error }) — shared by everyone using it, see main.js's readArchiveConfig
   refreshing: false, // true while re-scanning the folder for changes made outside the app
   loadingInitial: true, // true until the startup last-folder lookup + first scan finishes
   reviewMode: false, // true while review mode's full-size viewer replaces the rail+grid — see enterReviewMode
@@ -637,8 +638,10 @@ async function openFolder(folder, isStartup = false) {
   state.search = "";
   undoStack = []; // entries close over paths in the previous folder — discard them
   state.predefinedTags = await window.api.getTagConfig(folder);
+  await loadArchiveSettings();
   window.api.setLastFolder(folder);
   await refreshFiles(isStartup);
+  window.api.runScheduledArchive(folder); // catches up on a scheduled run no computer was open for
 }
 
 // Adds `tag` to every selected file that doesn't already have it. With a
@@ -3357,6 +3360,8 @@ function openSettingsModal() {
   if (state.aboutOpen) closeAbout();
   state.settingsModalOpen = true;
   render();
+  // Someone else may have changed the shared archive settings, or run it.
+  loadArchiveSettings().then(render);
 }
 
 function closeSettingsModal() {
@@ -3406,7 +3411,7 @@ function renderSettingsModal() {
       <div class="bm-modal bm-settings-modal">
         <div class="bm-modal-header">
           <div class="bm-modal-title">Options</div>
-          <div class="bm-modal-sub">Settings here are stored on this device only, separate from the catalog folder — each computer can have its own.</div>
+          <div class="bm-modal-sub">Settings here are stored on this device only, separate from the catalog folder — each computer can have its own. The exception is Long-term archive, which belongs to the catalog and is shared by everyone using it.</div>
         </div>
         <div class="bm-modal-body">
           <div class="bm-settings-row">
@@ -3443,6 +3448,7 @@ function renderSettingsModal() {
             </div>
             <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-autoexport-btn">Change</button>
           </div>
+          ${state.folder ? renderArchiveSettings() : ""}
         </div>
         <div class="bm-modal-footer">
           <button class="bm-btn bm-btn-primary bm-btn-maroon bm-btn-sm" id="settings-modal-close">Close</button>
@@ -3467,9 +3473,175 @@ function renderSettingsModal() {
     const chosen = await window.api.selectFolder();
     if (chosen) await setAutoexportFolder(chosen);
   });
+  if (state.folder && !state.archive.error) wireArchiveSettings(overlay);
 
   return overlay;
 }
+
+// ---- Long-term archive ----
+// Moves bills in the catalog's archive folder that haven't been modified in
+// offloadDays out to a folder outside the catalog -- main.js's archiveBills
+// does the moving. The settings belong to the open catalog and are shared by
+// everyone using it (see main.js's .catalog-archive.json), so they're reread
+// whenever a folder or the Options dialog opens. Main refuses a combination
+// that doesn't make sense (e.g. a long-term archive inside the catalog) and
+// says why.
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DEFAULT_ARCHIVE_TIME = "17:00";
+// How often the open window asks main.js whether a scheduled run is due.
+const SCHEDULED_ARCHIVE_CHECK_MS = 60 * 1000;
+
+async function loadArchiveSettings() {
+  if (!state.folder) return;
+  state.archive = await window.api.getArchiveSettings(state.folder);
+}
+
+// Resolves to whether the change was saved.
+async function setArchiveSettings(patch) {
+  const result = await window.api.setArchiveSettings(state.folder, patch);
+  if (result.error) {
+    alert(result.error);
+    render();
+    return false;
+  }
+  state.archive = result;
+  render();
+  return true;
+}
+
+async function chooseArchiveFolder(key) {
+  const chosen = await window.api.selectFolder();
+  if (chosen) await setArchiveSettings({ [key]: chosen });
+}
+
+function archiveStatusText() {
+  const { lastRun, running } = state.archive;
+  if (running) return "Archiving on this computer now…";
+  if (!lastRun) return "Hasn't run yet.";
+  const when = `${formatRelativeTime(lastRun.startedAt)}, by ${lastRun.by}`;
+  if (!lastRun.finishedAt) return `Last run: ${when}. It hasn't finished, or was stopped partway.`;
+  let text = `Last run: ${when}. Moved ${lastRun.moved} bill${lastRun.moved === 1 ? "" : "s"}.`;
+  if (lastRun.failed) text += ` ${lastRun.failed} couldn't be moved and will be tried next time: ${lastRun.firstError}`;
+  return text;
+}
+
+function renderArchiveSettings() {
+  const a = state.archive;
+  const intro = `<div class="bm-settings-section">
+            <div class="bm-field-label">Long-term archive</div>
+            <div class="bm-settings-row-value">Moves bills in the archive folder that haven't been modified in a while to a folder outside the catalog, so new computers have less to download.</div>
+          </div>`;
+  if (a.error) return `${intro}<div class="bm-settings-row-value">${escapeHtml(a.error)}</div>`;
+  const ready = !!(a.archiveFolder && a.offloadFolder);
+  return `${intro}
+          <div class="bm-settings-row">
+            <div class="bm-settings-row-text">
+              <div class="bm-settings-row-label">Archive folder</div>
+              <div class="bm-settings-row-value">${escapeHtml(a.archiveFolder || "Not set")}</div>
+              <div class="bm-settings-row-value">Where finished bills are moved, inside the catalog.</div>
+            </div>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-archive-btn">Change</button>
+          </div>
+          <div class="bm-settings-row">
+            <div class="bm-settings-row-text">
+              <div class="bm-settings-row-label">Long-term archive folder</div>
+              <div class="bm-settings-row-value">${escapeHtml(a.offloadFolder || "Not set")}</div>
+              <div class="bm-settings-row-value">Outside the catalog, where old bills go.</div>
+            </div>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-change-offload-btn">Change</button>
+          </div>
+          <div class="bm-settings-row">
+            <div class="bm-settings-row-label">Move bills not modified in the last</div>
+            <div class="bm-settings-row-actions">
+              <input class="bm-input bm-settings-days" id="settings-offload-days" type="number" min="1" max="3650" step="1" value="${a.offloadDays}" />
+              <span class="bm-settings-row-value">days</span>
+            </div>
+          </div>
+          <div class="bm-settings-row">
+            <div class="bm-settings-row-text">
+              <div class="bm-settings-row-label">Run automatically</div>
+              <div class="bm-settings-row-value">On whichever computer has BillManager open then. If none does, the next one to open it catches up.</div>
+            </div>
+            <div class="bm-settings-row-actions">
+              <select class="bm-select bm-settings-day" id="settings-archive-day">
+                <option value="" ${a.schedule ? "" : "selected"}>Never</option>
+                ${WEEKDAYS.map((d, i) => `<option value="${i}" ${a.schedule?.day === i ? "selected" : ""}>${d}s</option>`).join("")}
+              </select>
+              <input class="bm-input bm-settings-time" id="settings-archive-time" type="time" value="${a.schedule?.time || DEFAULT_ARCHIVE_TIME}" ${a.schedule ? "" : "disabled"} />
+            </div>
+          </div>
+          <div class="bm-settings-row">
+            <div class="bm-settings-row-value">${escapeHtml(ready ? archiveStatusText() : "Choose both folders to start archiving.")}</div>
+            <button class="bm-btn bm-btn-secondary bm-btn-sm" id="settings-run-archive-btn" ${ready && !a.running ? "" : "disabled"}>Archive now</button>
+          </div>`;
+}
+
+function wireArchiveSettings(overlay) {
+  overlay.querySelector("#settings-change-archive-btn").addEventListener("click", () => chooseArchiveFolder("archiveFolder"));
+  overlay.querySelector("#settings-change-offload-btn").addEventListener("click", () => chooseArchiveFolder("offloadFolder"));
+  const daysInput = overlay.querySelector("#settings-offload-days");
+  daysInput.addEventListener("change", () => {
+    const days = Number(daysInput.value);
+    if (days !== state.archive.offloadDays) setArchiveSettings({ offloadDays: days });
+  });
+  const daySelect = overlay.querySelector("#settings-archive-day");
+  const timeInput = overlay.querySelector("#settings-archive-time");
+  const saveSchedule = () =>
+    setArchiveSettings({
+      schedule: daySelect.value === "" ? null : { day: Number(daySelect.value), time: timeInput.value || DEFAULT_ARCHIVE_TIME },
+    });
+  daySelect.addEventListener("change", saveSchedule);
+  // Saved on leaving the field rather than on "change", which fires after
+  // the hour alone is typed -- saving re-renders the dialog, which would
+  // take the field away before the minutes could be typed.
+  timeInput.addEventListener("blur", () => {
+    if (timeInput.value && state.archive.schedule && timeInput.value !== state.archive.schedule.time) saveSchedule();
+  });
+  overlay.querySelector("#settings-run-archive-btn").addEventListener("click", archiveNow);
+}
+
+// The "Archive now" button. Asks first, with the count, since the bills
+// leave the app and there's no undo.
+async function archiveNow() {
+  const count = await window.api.countArchiveDue(state.folder);
+  if (count.error) {
+    alert(count.error);
+    return;
+  }
+  const days = state.archive.offloadDays;
+  if (count.due === 0) {
+    alert(`Every bill in the archive folder has been modified in the last ${days} days, so there's nothing to move yet.`);
+    return;
+  }
+  const bills = `${count.due} bill${count.due === 1 ? "" : "s"}`;
+  if (!confirm(`Move ${bills} not modified in the last ${days} days to the long-term archive? They'll no longer show in BillManager.`)) return;
+  state.archive.running = true;
+  render();
+  const result = await window.api.runArchive(state.folder);
+  await loadArchiveSettings();
+  render();
+  if (result.error) alert(result.error);
+  else if (result.errors.length) {
+    const shown = result.errors.slice(0, 5).map((e) => e.error);
+    if (result.errors.length > shown.length) shown.push(`…and ${result.errors.length - shown.length} more.`);
+    alert(`Moved ${result.moved} of ${bills}. The rest couldn't be moved and will be tried next time:\n\n${shown.join("\n")}`);
+  }
+}
+
+// Pushed from main.js after every run, from the button or the schedule.
+// Bills that left the archive folder drop out of the list on a re-list --
+// right away unless that would interrupt typing, otherwise on the next
+// auto-refresh.
+async function archiveRan(result) {
+  if (result.folder !== state.folder) return;
+  await loadArchiveSettings();
+  if (result.moved > 0 && backgroundRefreshAllowed()) refreshFiles(true);
+  else render();
+}
+
+setInterval(() => {
+  if (state.folder) window.api.runScheduledArchive(state.folder);
+}, SCHEDULED_ARCHIVE_CHECK_MS);
 
 // ---- Commenting name ----
 // Per-device name (see main.js's settings.json) that commentAttributionLine
@@ -3587,6 +3759,7 @@ function renderCommenterNameModal() {
   if (!commentSignerName()) state.commenterModalOpen = true;
   window.api.onAbAppsName((name) => setAbAppsName(name));
   state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
+  window.api.onArchiveRan((result) => archiveRan(result));
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
 

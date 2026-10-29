@@ -25,6 +25,16 @@ contextBridge.exposeInMainWorld("api", {
   undoAutoexport: (destFull) => ipcRenderer.invoke("undo-autoexport", destFull),
   getAutoexportFolder: () => ipcRenderer.invoke("get-autoexport-folder"),
   setAutoexportFolder: (folder) => ipcRenderer.invoke("set-autoexport-folder", folder),
+  getArchiveSettings: (folder) => ipcRenderer.invoke("get-archive-settings", folder),
+  setArchiveSettings: (folder, patch) => ipcRenderer.invoke("set-archive-settings", folder, patch),
+  countArchiveDue: (folder) => ipcRenderer.invoke("count-archive-due", folder),
+  runArchive: (folder) => ipcRenderer.invoke("run-archive", folder),
+  runScheduledArchive: (folder) => ipcRenderer.invoke("run-scheduled-archive", folder),
+  onArchiveRan: (callback) => {
+    const listener = (event, result) => callback(result);
+    ipcRenderer.on("archive-ran", listener);
+    return () => ipcRenderer.removeListener("archive-ran", listener);
+  },
   nudgeWindowFocus: () => ipcRenderer.invoke("nudge-window-focus"),
   openFile: (folder, filename) => ipcRenderer.invoke("open-file", folder, filename),
   getTagConfig: (folder) => ipcRenderer.invoke("get-tag-config", folder),

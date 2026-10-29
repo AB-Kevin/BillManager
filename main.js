@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require("ele
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
+const os = require("os");
 const { pathToFileURL } = require("url");
 const { execFileSync } = require("child_process");
 const { exiftool } = require("exiftool-vendored");
@@ -1162,10 +1163,10 @@ function oldTagConfigPath(folder) {
   return path.join(OLD_TAG_CONFIG_DIR, `${hash}.json`);
 }
 
-// Returns null if the file is missing or holds no tag list, and throws if it's
-// there but can't be read (still locked after the same retries as a save, or
-// damaged) -- treating that as "no tags" would let the next save wipe it.
-function readTagsFile(file) {
+// Returns null if the file is missing, and throws if it's there but can't be
+// read (still locked after the same retries as a save, or damaged) -- treating
+// that as missing would let the next save wipe it.
+function readJsonRetrying(file) {
   let raw;
   for (let attempt = 0; ; attempt++) {
     try {
@@ -1177,8 +1178,13 @@ function readTagsFile(file) {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, JSON_WRITE_RETRY_DELAY_MS);
     }
   }
-  const parsed = JSON.parse(raw);
-  return Array.isArray(parsed.tags) ? parsed.tags : null;
+  return JSON.parse(raw);
+}
+
+// Null if the file is missing or holds no tag list; throws as readJsonRetrying does.
+function readTagsFile(file) {
+  const parsed = readJsonRetrying(file);
+  return Array.isArray(parsed?.tags) ? parsed.tags : null;
 }
 
 // Folders whose tag list was there but couldn't be read when they were opened.
@@ -1224,3 +1230,375 @@ ipcMain.handle("save-tag-config", async (event, folder, tags) => {
   writeTagsFile(tagConfigPath(folder), tags);
   return tags;
 });
+
+// --- Long-term archive -------------------------------------------------------
+// Finished bills are moved into an archive folder inside the catalog and stay
+// there, so every new computer pointed at the shared OneDrive catalog has to
+// download more of them before the app is usable. Archiving moves the bills
+// in that folder that haven't been modified in offloadDays out to a long-term
+// archive folder outside the catalog. Anyone can run it from Options, and it
+// can be scheduled for a time once a week, which whichever computer has
+// BillManager open then carries out.
+//
+// "Modified" is the file's own last-modified time: the last tag or comment
+// saved on it, since moving a file into the archive folder doesn't change it.
+//
+// The settings belong to the catalog, like its predefined tags, so they're
+// kept in a hidden file in the catalog folder where every computer sees them:
+//   { archiveFolder, offloadFolder, offloadDays, schedule, lastRun }
+// archiveFolder is relative to the catalog folder. So is offloadFolder when
+// it's on the same drive -- the catalog sits under each person's own user
+// folder, so an absolute path there would only work on the computer that
+// chose it -- and it's absolute otherwise (another drive, a network share).
+// schedule is { day: 0-6 (Sunday first), time: "HH:MM", since }, `since`
+// being when it was set. lastRun is { startedAt, finishedAt, by, computer,
+// moved, failed, firstError }, finishedAt missing while it's still running.
+const ARCHIVE_CONFIG_FILENAME = ".catalog-archive.json";
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_OFFLOAD_DAYS = 90;
+const MAX_OFFLOAD_DAYS = 3650;
+// A run that started this long ago and never recorded finishing is taken to
+// have been cut off (the app closed mid-run) rather than still going.
+const ARCHIVE_RUN_STALE_MS = 3 * 60 * 60 * 1000;
+// See runScheduledArchive.
+const SCHEDULED_ARCHIVE_SPREAD_MS = 5 * 60 * 1000;
+
+function archiveConfigPath(folder) {
+  return path.join(folder, ARCHIVE_CONFIG_FILENAME);
+}
+
+function validOffloadDays(days) {
+  return Number.isInteger(days) && days >= 1 && days <= MAX_OFFLOAD_DAYS;
+}
+
+function validSchedule(schedule) {
+  return (
+    !!schedule &&
+    Number.isInteger(schedule.day) &&
+    schedule.day >= 0 &&
+    schedule.day <= 6 &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time)
+  );
+}
+
+// Throws as readJsonRetrying does when the file's there but unreadable, so
+// nothing saves over settings it couldn't see.
+function readArchiveConfig(folder) {
+  const raw = readJsonRetrying(archiveConfigPath(folder)) || {};
+  return {
+    archiveFolder: typeof raw.archiveFolder === "string" && raw.archiveFolder ? raw.archiveFolder : null,
+    offloadFolder: typeof raw.offloadFolder === "string" && raw.offloadFolder ? raw.offloadFolder : null,
+    offloadDays: validOffloadDays(raw.offloadDays) ? raw.offloadDays : DEFAULT_OFFLOAD_DAYS,
+    schedule: validSchedule(raw.schedule) ? raw.schedule : null,
+    lastRun: raw.lastRun && typeof raw.lastRun.startedAt === "number" ? raw.lastRun : null,
+  };
+}
+
+// Re-reads just before writing, so a change synced in from another computer
+// since this one last read the file isn't saved over.
+function updateArchiveConfig(folder, patch) {
+  const next = { ...readArchiveConfig(folder), ...patch };
+  writeJsonRetrying(archiveConfigPath(folder), next, { hidden: true });
+  return next;
+}
+
+// path.win32.relative compares case-insensitively, as Windows paths are, and
+// returns `to` itself when it's on another drive.
+function isSameOrInside(child, parent) {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function storedFolderPath(folder, full) {
+  const rel = path.relative(folder, full);
+  return path.isAbsolute(rel) ? full : rel;
+}
+
+function resolvedFolderPath(folder, stored) {
+  return stored ? path.resolve(folder, stored) : null;
+}
+
+function isDirectory(full) {
+  try {
+    return fs.statSync(full).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+// The archive folder must be strictly inside the catalog -- the catalog
+// folder itself would archive every bill in it -- and the long-term archive
+// outside it, or its bills would still be synced to everyone.
+function archiveSettingsError(folder, { archiveFull, offloadFull, offloadDays, schedule }) {
+  if (!validOffloadDays(offloadDays)) return `The number of days has to be a whole number from 1 to ${MAX_OFFLOAD_DAYS}.`;
+  if (schedule && !validSchedule(schedule)) return "Choose a day and a time for archiving to run.";
+  if (archiveFull && (!isSameOrInside(archiveFull, folder) || isSameOrInside(folder, archiveFull))) {
+    return `The archive folder has to be a folder inside the catalog folder (${folder}).`;
+  }
+  if (offloadFull && (isSameOrInside(offloadFull, folder) || isSameOrInside(folder, offloadFull))) {
+    return "The long-term archive has to be outside the catalog folder, or its bills would still be synced to every computer.";
+  }
+  return null;
+}
+
+function archiveRunner() {
+  return { by: readAbAppsName() || readSettings().commenterName || os.hostname(), computer: os.hostname() };
+}
+
+function runningElsewhere(lastRun, now) {
+  return !!lastRun && !lastRun.finishedAt && lastRun.computer !== os.hostname() && now - lastRun.startedAt < ARCHIVE_RUN_STALE_MS;
+}
+
+function formatClock(ms) {
+  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// Everything a run needs settled before it moves anything: both folders
+// there, nobody else's run in progress, and which bills are due. The
+// long-term archive is never created here -- on a computer that can't reach
+// it, a new empty folder in its place would keep the bills on just that one.
+function archivePlan(folder) {
+  const config = readArchiveConfig(folder);
+  const archiveFull = resolvedFolderPath(folder, config.archiveFolder);
+  const offloadFull = resolvedFolderPath(folder, config.offloadFolder);
+  if (!archiveFull || !offloadFull) return { error: "Choose the archive folder and the long-term archive folder first." };
+  if (!isDirectory(archiveFull)) return { error: `The archive folder (${archiveFull}) isn't there.` };
+  if (!isDirectory(offloadFull)) return { error: `The long-term archive folder (${offloadFull}) can't be reached from this computer.` };
+  const now = Date.now();
+  if (runningElsewhere(config.lastRun, now)) {
+    return { error: `${config.lastRun.by} started archiving at ${formatClock(config.lastRun.startedAt)}. Try again once that's finished.` };
+  }
+  const due = walkFiles(archiveFull)
+    .map(({ relPath }) => relPath)
+    .filter((relPath) => {
+      try {
+        return now - fs.statSync(path.join(archiveFull, relPath)).mtimeMs >= config.offloadDays * DAY_MS;
+      } catch {
+        return false;
+      }
+    });
+  return { archiveFull, offloadFull, due };
+}
+
+async function removeQuietly(file) {
+  try {
+    await fs.promises.unlink(file);
+  } catch {}
+}
+
+// Copies rather than renames: the catalog's files may only be OneDrive
+// placeholders on this computer, and reading one is what makes OneDrive
+// download it first. The copy keeps the bill's modified time and its place in
+// any subfolder of the archive folder, with " (n)" added if that name's
+// taken by a different file. The original is only removed once the copy is in
+// place at full size; if that fails (the file's locked), the copy is removed
+// instead and the bill is tried again next run, so it never ends up in both.
+// Two computers archiving at once (a scheduled run, or someone pressing the
+// button) can both reach the same bill: one finding its original already
+// gone, or its exact copy already there, just finishes the job.
+async function offloadOneFile(archiveFull, offloadFull, relPath) {
+  const srcFull = path.join(archiveFull, relPath);
+  let src;
+  try {
+    src = fs.statSync(srcFull);
+  } catch (e) {
+    if (e.code === "ENOENT") return { gone: true };
+    throw e;
+  }
+  const ext = path.extname(relPath);
+  const stem = relPath.slice(0, relPath.length - ext.length);
+  let destFull = path.join(offloadFull, relPath);
+  let alreadyCopied = false;
+  for (let n = 1; fs.existsSync(destFull); n++) {
+    const dest = fs.statSync(destFull);
+    // Within 2s: some drives and shares round modified times that far.
+    if (dest.size === src.size && Math.abs(dest.mtimeMs - src.mtimeMs) < 2000) {
+      alreadyCopied = true;
+      break;
+    }
+    destFull = path.join(offloadFull, `${stem} (${n})${ext}`);
+  }
+  if (!alreadyCopied) {
+    try {
+      await fs.promises.mkdir(path.dirname(destFull), { recursive: true });
+      await fs.promises.copyFile(srcFull, destFull, fs.constants.COPYFILE_EXCL);
+    } catch (e) {
+      if (e.code !== "EEXIST") await removeQuietly(destFull);
+      return { error: `Couldn't copy "${relPath}" to the long-term archive: ${e.message}` };
+    }
+  }
+  try {
+    if ((await fs.promises.stat(destFull)).size !== src.size) throw new Error("the copy came out incomplete");
+    await fs.promises.unlink(srcFull);
+  } catch (e) {
+    if (e.code === "ENOENT" && !fs.existsSync(srcFull)) return { destFull };
+    if (!alreadyCopied && fs.existsSync(srcFull)) await removeQuietly(destFull);
+    return { error: `Couldn't move "${relPath}" out of the archive folder: ${e.message}` };
+  }
+  return { destFull };
+}
+
+// Records the run as started before moving anything, so other computers see
+// it (once OneDrive syncs the file) and leave it be, then records how it
+// went. Async throughout -- a big first run can mean downloading and copying
+// a large backlog, which mustn't freeze the window.
+async function archiveBills(folder) {
+  const plan = archivePlan(folder);
+  if (plan.error) return plan;
+  const runner = archiveRunner();
+  const startedAt = Date.now();
+  updateArchiveConfig(folder, { lastRun: { startedAt, ...runner } });
+  let moved = 0;
+  const errors = [];
+  for (const relPath of plan.due) {
+    let result;
+    try {
+      result = await offloadOneFile(plan.archiveFull, plan.offloadFull, relPath);
+    } catch (e) {
+      result = { error: `Couldn't move "${relPath}": ${e.message}` };
+    }
+    if (result.error) {
+      errors.push({ path: relPath, error: result.error });
+      continue;
+    }
+    // Moved or deleted since the plan was made -- by someone else, or a
+    // computer archiving at the same time -- so there's nothing left to do.
+    if (result.gone) continue;
+    moved++;
+    metaCache.delete(path.join(plan.archiveFull, relPath));
+  }
+  const lastRun = { startedAt, finishedAt: Date.now(), ...runner, moved, failed: errors.length, firstError: errors[0]?.error || null };
+  updateArchiveConfig(folder, { lastRun });
+  return { moved, errors, lastRun };
+}
+
+// Only one run at a time on this computer; asking again while one's going
+// (the button, the schedule) gets that one. Every finished run is pushed to
+// the renderer ("archive-ran"), which re-lists the folder if bills left it.
+let archiveRun = null;
+
+function runArchive(folder) {
+  if (archiveRun) return archiveRun;
+  archiveRun = archiveBills(folder)
+    .catch((e) => ({ error: `Archiving stopped partway: ${e.message}` }))
+    .then((result) => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("archive-ran", { folder, ...result });
+      return result;
+    })
+    .finally(() => {
+      archiveRun = null;
+    });
+  return archiveRun;
+}
+
+// The most recent time the weekly schedule came round, at or before `now`,
+// in this computer's local time.
+function lastScheduledTime(schedule, now) {
+  const [hours, minutes] = schedule.time.split(":").map(Number);
+  const at = new Date(now);
+  at.setHours(hours, minutes, 0, 0);
+  at.setDate(at.getDate() - ((at.getDay() - schedule.day + 7) % 7));
+  if (at.getTime() > now) at.setDate(at.getDate() - 7);
+  return at.getTime();
+}
+
+// The scheduled time the catalog is waiting to be archived for, or null.
+// One that passed with no computer open is caught up on the next time any
+// computer has it open. A schedule set after this week's time waits for next
+// week's rather than running straight away.
+function missedScheduledTime(config, now) {
+  if (!config.schedule) return null;
+  const at = lastScheduledTime(config.schedule, now);
+  if (at <= (config.schedule.since || 0) || at <= (config.lastRun?.startedAt || 0)) return null;
+  return at;
+}
+
+// The scheduled time this computer last tried, so one that failed here (e.g.
+// it can't reach the long-term archive) isn't retried every minute. Another
+// computer may still manage it; this one tries again next week or next launch.
+let scheduledArchiveTried = null;
+
+// Called by the renderer every minute. Every computer with BillManager open
+// at the scheduled time gets here at once, so each waits a random few minutes
+// and checks again: by then the first one's start has usually reached the
+// rest through OneDrive, and they leave it to that one.
+async function runScheduledArchive(folder) {
+  let config;
+  try {
+    config = readArchiveConfig(folder);
+  } catch {
+    return null;
+  }
+  const at = missedScheduledTime(config, Date.now());
+  const key = `${folder}|${at}`;
+  if (!at || archiveRun || scheduledArchiveTried === key) return null;
+  scheduledArchiveTried = key;
+  await delay(Math.random() * SCHEDULED_ARCHIVE_SPREAD_MS);
+  try {
+    config = readArchiveConfig(folder);
+  } catch {
+    return null;
+  }
+  if (missedScheduledTime(config, Date.now()) !== at || runningElsewhere(config.lastRun, Date.now())) return null;
+  return runArchive(folder);
+}
+
+// What the Options dialog shows, with both folders as absolute paths.
+function archiveState(folder) {
+  const config = readArchiveConfig(folder);
+  return {
+    archiveFolder: resolvedFolderPath(folder, config.archiveFolder),
+    offloadFolder: resolvedFolderPath(folder, config.offloadFolder),
+    offloadDays: config.offloadDays,
+    schedule: config.schedule,
+    lastRun: config.lastRun,
+    running: !!archiveRun,
+  };
+}
+
+ipcMain.handle("get-archive-settings", (event, folder) => {
+  try {
+    return archiveState(folder);
+  } catch (e) {
+    return { error: `Couldn't read the archive settings (OneDrive may be syncing them): ${e.message}` };
+  }
+});
+
+// `patch` holds whichever of archiveFolder/offloadFolder (absolute, or null
+// to clear), offloadDays and schedule (or null for no schedule) changed.
+ipcMain.handle("set-archive-settings", (event, folder, patch) => {
+  try {
+    const config = readArchiveConfig(folder);
+    const next = {
+      archiveFull: "archiveFolder" in patch ? patch.archiveFolder : resolvedFolderPath(folder, config.archiveFolder),
+      offloadFull: "offloadFolder" in patch ? patch.offloadFolder : resolvedFolderPath(folder, config.offloadFolder),
+      offloadDays: "offloadDays" in patch ? patch.offloadDays : config.offloadDays,
+      schedule: "schedule" in patch ? patch.schedule : config.schedule,
+    };
+    const error = archiveSettingsError(folder, next);
+    if (error) return { error };
+    updateArchiveConfig(folder, {
+      archiveFolder: next.archiveFull && storedFolderPath(folder, next.archiveFull),
+      offloadFolder: next.offloadFull && storedFolderPath(folder, next.offloadFull),
+      offloadDays: next.offloadDays,
+      schedule: "schedule" in patch && patch.schedule ? { day: patch.schedule.day, time: patch.schedule.time, since: Date.now() } : next.schedule,
+    });
+    return archiveState(folder);
+  } catch (e) {
+    return { error: `Couldn't save the archive settings: ${e.message}` };
+  }
+});
+
+// How many bills a run would move right now, for the button's confirmation.
+ipcMain.handle("count-archive-due", (event, folder) => {
+  try {
+    const plan = archivePlan(folder);
+    return plan.error ? plan : { due: plan.due.length };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
+ipcMain.handle("run-archive", (event, folder) => runArchive(folder));
+
+ipcMain.handle("run-scheduled-archive", (event, folder) => runScheduledArchive(folder));
