@@ -214,31 +214,70 @@ function parseComments(raw) {
     .filter(Boolean);
 }
 
+// Throws if the file can't be read; readFileMeta below is the forgiving
+// version, and readFileMetaCached needs to tell a failed read from a file
+// that really has no tags so it never remembers the failure.
+async function readFileMetaFromDisk(full, ext) {
+  if (ext === ".pdf") {
+    // Some PDFs (notably ones that have been through a scan/print-to-PDF
+    // driver, e.g. Foxit's PDF printer) carry an embedded XMP metadata
+    // stream alongside the Info dictionary — often with an empty
+    // dc:subject/dc:description left behind by that driver. exiftool's
+    // default read pulls in every tag group, and when an unqualified
+    // "Keywords"/"Subject" name exists in more than one group, it can
+    // resolve to that other (empty) group's value instead of PDF's, even
+    // though we explicitly asked for "-PDF:Keywords"/"-PDF:Subject". The
+    // write always lands correctly in the Info dictionary, so this only
+    // shows up on the read: the tag/comment looks like it was never saved
+    // the next time the folder is refreshed, even though it's still on
+    // disk. "-G" makes exiftool return fully group-qualified keys (e.g.
+    // "PDF:Keywords") so the lookup below can never be shadowed by another
+    // group's same-named tag.
+    const tags = await exiftool.read(full, ["-G", "-PDF:Keywords", "-PDF:Subject"]);
+    return { tags: toStringArray(tags["PDF:Keywords"]), comments: parseComments(tags["PDF:Subject"]) };
+  }
+  const tags = await exiftool.read(full);
+  return { tags: toStringArray(tags.Keywords), comments: parseComments(tags.Comment) };
+}
+
 async function readFileMeta(full, ext) {
   try {
-    if (ext === ".pdf") {
-      // Some PDFs (notably ones that have been through a scan/print-to-PDF
-      // driver, e.g. Foxit's PDF printer) carry an embedded XMP metadata
-      // stream alongside the Info dictionary — often with an empty
-      // dc:subject/dc:description left behind by that driver. exiftool's
-      // default read pulls in every tag group, and when an unqualified
-      // "Keywords"/"Subject" name exists in more than one group, it can
-      // resolve to that other (empty) group's value instead of PDF's, even
-      // though we explicitly asked for "-PDF:Keywords"/"-PDF:Subject". The
-      // write always lands correctly in the Info dictionary, so this only
-      // shows up on the read: the tag/comment looks like it was never saved
-      // the next time the folder is refreshed, even though it's still on
-      // disk. "-G" makes exiftool return fully group-qualified keys (e.g.
-      // "PDF:Keywords") so the lookup below can never be shadowed by another
-      // group's same-named tag.
-      const tags = await exiftool.read(full, ["-G", "-PDF:Keywords", "-PDF:Subject"]);
-      return { tags: toStringArray(tags["PDF:Keywords"]), comments: parseComments(tags["PDF:Subject"]) };
-    }
-    const tags = await exiftool.read(full);
-    return { tags: toStringArray(tags.Keywords), comments: parseComments(tags.Comment) };
+    return await readFileMetaFromDisk(full, ext);
   } catch {
     return { tags: [], comments: [] };
   }
+}
+
+// Every file's tags and comments, remembered between refreshes so a refresh
+// only runs exiftool on files that are new or have changed — re-reading a
+// whole OneDrive folder after every rename could take half a minute. Keyed by
+// absolute path, and an entry only counts while the file's size and modified
+// time still match what they were when it was read. Every tag/comment write
+// (this app's, or a coworker's synced in) changes the modified time, since
+// writeFileMeta doesn't pass exiftool's -P. Kept in memory only, so restarting
+// the app starts it over; list-files drops entries for files no longer in the
+// open folder, and the Refresh button skips it entirely (see list-files).
+let metaCache = new Map();
+
+async function readFileMetaCached(full, ext, stat) {
+  const hit = metaCache.get(full);
+  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return hit.meta;
+  try {
+    const meta = await readFileMetaFromDisk(full, ext);
+    metaCache.set(full, { size: stat.size, mtimeMs: stat.mtimeMs, meta });
+    return meta;
+  } catch {
+    metaCache.delete(full);
+    return { tags: [], comments: [] };
+  }
+}
+
+// A rename or move keeps the file's bytes, size and modified time, so its
+// entry just follows it to the new path.
+function moveCachedMeta(srcFull, destFull) {
+  const hit = metaCache.get(srcFull);
+  metaCache.delete(srcFull);
+  if (hit) metaCache.set(destFull, hit);
 }
 
 async function writeFileMeta(full, ext, tags, comments) {
@@ -489,6 +528,7 @@ function moveOneFile(folder, relPath, destDir) {
   try {
     fs.mkdirSync(path.dirname(destFull), { recursive: true });
     fs.renameSync(srcFull, destFull);
+    moveCachedMeta(srcFull, destFull);
   } catch (e) {
     // The file may be transiently locked (antivirus scan, an open preview, a
     // sync client) — report it as a per-file failure instead of throwing.
@@ -618,6 +658,7 @@ function renameOneFile(folder, relPath, newName) {
   }
   try {
     fs.renameSync(srcFull, destFull);
+    moveCachedMeta(srcFull, destFull);
   } catch (e) {
     return { error: `Couldn't rename "${path.basename(relPath)}": ${e.message}` };
   }
@@ -654,7 +695,7 @@ function autorenameOneFile(folder, relPath) {
 }
 
 ipcMain.handle("autorename-file", async (event, folder, relPath) => {
-  return autorenameOneFile(folder, relPath);
+  return withFileEntry(folder, autorenameOneFile(folder, relPath));
 });
 
 // Autorenames many files in one action — e.g. a multi-select move that hit
@@ -691,7 +732,10 @@ function autorenameFilesBatch(folder, relPaths) {
 }
 
 ipcMain.handle("autorename-files-batch", async (event, folder, relPaths) => {
-  return autorenameFilesBatch(folder, relPaths);
+  const result = autorenameFilesBatch(folder, relPaths);
+  const rotations = readRotations();
+  await Promise.all(result.moved.map(async (m) => (m.file = await fileEntryOrNull(folder, m.to, rotations))));
+  return result;
 });
 
 // Maps the EXIF Orientation tag (1-8) to the clockwise degrees a viewer must
@@ -813,7 +857,7 @@ async function autoexportOneFile(folder, relPath, destFolder) {
 }
 
 ipcMain.handle("autoexport-file", async (event, folder, relPath, destFolder) => {
-  return autoexportOneFile(folder, relPath, destFolder);
+  return withFileEntry(folder, await autoexportOneFile(folder, relPath, destFolder));
 });
 
 // Autoexports many files in one action, mirroring autorenameFilesBatch: all
@@ -865,7 +909,10 @@ async function autoexportFilesBatch(folder, relPaths, destFolder) {
 }
 
 ipcMain.handle("autoexport-files-batch", async (event, folder, relPaths, destFolder) => {
-  return autoexportFilesBatch(folder, relPaths, destFolder);
+  const result = await autoexportFilesBatch(folder, relPaths, destFolder);
+  const rotations = readRotations();
+  await Promise.all(result.saved.map(async (s) => (s.file = await fileEntryOrNull(folder, s.path, rotations))));
+  return result;
 });
 
 // Deletes an Autoexport's copy — half of undoing one; the renderer renames
@@ -894,32 +941,59 @@ ipcMain.handle("nudge-window-focus", async () => {
   mainWindow.focus();
 });
 
-ipcMain.handle("list-files", async (event, folder) => {
+// One file's entry in the catalog list, as the renderer keeps it in state.files.
+async function buildFileEntry(folder, relPath, rotations = readRotations()) {
+  const full = path.join(folder, relPath);
+  const name = path.basename(relPath);
+  const ext = path.extname(name).toLowerCase();
+  const slash = relPath.lastIndexOf("/");
+  const stat = fs.statSync(full);
+  const meta = await readFileMetaCached(full, ext, stat);
+  return {
+    path: relPath,
+    name,
+    dir: slash === -1 ? "" : relPath.slice(0, slash),
+    ext,
+    url: pathToFileURL(full).href,
+    size: stat.size,
+    mtime: stat.mtimeMs,
+    created: stat.birthtimeMs || stat.ctimeMs,
+    tags: meta.tags,
+    comments: meta.comments,
+    rotation: rotations[full] || 0,
+  };
+}
+
+// `fresh` (the Refresh button) re-reads every file's tags and comments
+// instead of trusting metaCache.
+ipcMain.handle("list-files", async (event, folder, fresh) => {
   const found = walkFiles(folder);
+  const live = new Set(found.map(({ relPath }) => path.join(folder, relPath)));
+  if (fresh) metaCache = new Map();
+  for (const full of metaCache.keys()) {
+    if (!live.has(full)) metaCache.delete(full);
+  }
   const rotations = readRotations();
-  return Promise.all(
-    found.map(async ({ relPath, dir }) => {
-      const full = path.join(folder, relPath);
-      const name = path.basename(relPath);
-      const ext = path.extname(name).toLowerCase();
-      const stat = fs.statSync(full);
-      const meta = await readFileMeta(full, ext);
-      return {
-        path: relPath,
-        name,
-        dir,
-        ext,
-        url: pathToFileURL(full).href,
-        size: stat.size,
-        mtime: stat.mtimeMs,
-        created: stat.birthtimeMs || stat.ctimeMs,
-        tags: meta.tags,
-        comments: meta.comments,
-        rotation: rotations[full] || 0,
-      };
-    })
-  );
+  return Promise.all(found.map(({ relPath }) => buildFileEntry(folder, relPath, rotations)));
 });
+
+// Autorename and Autoexport hand back each renamed file's new entry, so the
+// renderer can swap it in place rather than re-listing the whole folder. The
+// rename itself already succeeded by this point, so a file that can't be
+// stat'ed right after (a sync client holding it) gets a null entry instead
+// of failing the call — the renderer re-lists the folder for that case.
+async function fileEntryOrNull(folder, relPath, rotations) {
+  try {
+    return await buildFileEntry(folder, relPath, rotations);
+  } catch {
+    return null;
+  }
+}
+
+async function withFileEntry(folder, result) {
+  if (result.error) return result;
+  return { ...result, file: await fileEntryOrNull(folder, result.path) };
+}
 
 // A metadata write (writeFileMeta below) ends with exiftool renaming a temp file
 // over the original, which fails with "Error renaming temporary file to <path>"
@@ -944,6 +1018,7 @@ ipcMain.handle("update-file-meta", async (event, folder, relPath, patch) => {
   for (let attempt = 0; attempt <= META_WRITE_RETRIES; attempt++) {
     try {
       await writeFileMeta(full, ext, merged.tags || [], merged.comments || []);
+      metaCache.delete(full);
       return merged;
     } catch (err) {
       lastErr = err;

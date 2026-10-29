@@ -503,7 +503,10 @@ function getFiltered() {
   return sortFiles(filtered);
 }
 
-async function refreshFiles(skipFocusNudge = false) {
+// `fresh` re-reads every file's tags and comments off disk instead of reusing
+// the ones main.js remembers from earlier refreshes (see metaCache there) —
+// only the Refresh button asks for it, as the way to rule the cache out.
+async function refreshFiles(skipFocusNudge = false, { fresh = false } = {}) {
   if (!state.folder) return;
   state.refreshing = true;
   render();
@@ -517,7 +520,7 @@ async function refreshFiles(skipFocusNudge = false) {
     flushPendingComments();
     await waitForPendingMetaWrites();
     [state.files, state.allFolders] = await Promise.all([
-      window.api.listFiles(state.folder),
+      window.api.listFiles(state.folder, fresh),
       window.api.listFolders(state.folder),
     ]);
     // Drop any selected paths that no longer exist under this name (moved elsewhere
@@ -539,6 +542,49 @@ async function refreshFiles(skipFocusNudge = false) {
   // since blurring/refocusing the window before Windows has finished giving it
   // focus is what was leaving the app opening behind other windows on launch.
   if (!skipFocusNudge) window.api.nudgeWindowFocus();
+}
+
+// After Autorename/Autoexport, swaps each renamed file's entry for the new one
+// main.js sends back instead of a full refreshFiles(): tags and comments live
+// inside the file and move with it, and nothing else in the folder changed.
+// `renamed` is a list of { from, to, file } (old path, new path, new entry).
+// Falls back to a full refresh if an old path isn't in the list (changed
+// outside the app) or main.js couldn't read a new entry back (`file` is null).
+// Callers run settleMetaWritesBeforeRename first.
+async function replaceRenamedFiles(renamed) {
+  // Review mode follows the file it's showing to its new name. Otherwise the
+  // old path drops out of the list and maybeAdvanceReview treats that as the
+  // file leaving review, stepping on to whichever file now sits in its spot.
+  const reviewed = state.reviewMode && renamed.find((r) => r.from === state.reviewCursor);
+  if (reviewed) setReviewCursorState(reviewed.to);
+  const byOldPath = new Map(renamed.map((r) => [r.from, r.file]));
+  if (!renamed.every((r) => r.file && state.files.some((f) => f.path === r.from))) {
+    await refreshFiles();
+    return;
+  }
+  state.files = state.files.map((f) => byOldPath.get(f.path) || f);
+  render();
+  // Same Windows/Chromium <select> workaround as at the end of refreshFiles.
+  window.api.nudgeWindowFocus();
+}
+
+// Undo for Autorename/Autoexport: renames the file at `path` back to
+// `prevName`, with review mode following it back the same way
+// replaceRenamedFiles follows it forward. The refreshFiles() that
+// undoActionById runs afterward then finds it under its old name.
+async function renameBackForUndo(path, prevName) {
+  const r = await window.api.renameFile(state.folder, path, prevName);
+  if (r && r.error) throw new Error(r.error);
+  if (state.reviewMode && state.reviewCursor === path) setReviewCursorState(r.path);
+}
+
+// refreshFiles() is what normally waits out an in-flight tag/comment save
+// before re-reading. A rename that skips it waits here instead — before the
+// file moves out from under the save, so the entry main.js hands back for
+// the new name already has the edit in it.
+async function settleMetaWritesBeforeRename() {
+  flushPendingComments();
+  await waitForPendingMetaWrites();
 }
 
 // Auto-refresh: periodically rescans the open folder for changes made outside
@@ -819,6 +865,7 @@ async function autorenameSelected() {
     const file = files[0];
     const prevName = file.name;
     try {
+      await settleMetaWritesBeforeRename();
       const result = await window.api.autorenameFile(state.folder, file.path);
       if (result && result.error) {
         alert(result.error);
@@ -828,12 +875,11 @@ async function autorenameSelected() {
       state.selectAnchor = result.path;
       const newPath = result.path;
       pushUndo(`Autorename "${prevName}"`, async () => {
-        const r = await window.api.renameFile(state.folder, newPath, prevName);
-        if (r && r.error) throw new Error(r.error);
+        await renameBackForUndo(newPath, prevName);
       });
+      await replaceRenamedFiles([{ from: file.path, to: newPath, file: result.file }]);
     } catch (e) {
       alert(`Couldn't rename "${prevName}": ${e.message || e}`);
-    } finally {
       await refreshFiles();
     }
     return;
@@ -843,22 +889,29 @@ async function autorenameSelected() {
   const prevNames = new Map(files.map((f) => [f.path, f.name]));
   let moved = [];
   let errors = [];
+  let threw = false;
   try {
+    await settleMetaWritesBeforeRename();
     const result = await window.api.autorenameFiles(state.folder, paths);
     moved = (result && result.moved) || [];
     errors = (result && result.errors) || [];
   } catch (e) {
     errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
-  } finally {
-    state.selected = new Set([...moved.map((m) => m.to), ...errors.map((e) => e.path)]);
-    await refreshFiles();
+    threw = true;
   }
+  state.selected = new Set([...moved.map((m) => m.to), ...errors.map((e) => e.path)]);
+  // A call that threw outright leaves no telling what got renamed.
+  if (threw) await refreshFiles();
+  else await replaceRenamedFiles(moved);
   if (moved.length > 0) {
     pushUndo(`Autorename ${moved.length} files`, async () => {
       const errs = [];
       for (const { from, to } of moved) {
-        const r = await window.api.renameFile(state.folder, to, prevNames.get(from));
-        if (r && r.error) errs.push(`${to}: ${r.error}`);
+        try {
+          await renameBackForUndo(to, prevNames.get(from));
+        } catch (e) {
+          errs.push(`${to}: ${e.message || e}`);
+        }
       }
       if (errs.length > 0) throw new Error(`Some files couldn't be renamed back:\n${errs.join("\n")}`);
     });
@@ -899,8 +952,7 @@ async function ensureAutoexportFolder() {
 async function undoOneAutoexport(destFull, newPath, prevName) {
   const r = await window.api.undoAutoexport(destFull);
   if (r && r.error) throw new Error(r.error);
-  const r2 = await window.api.renameFile(state.folder, newPath, prevName);
-  if (r2 && r2.error) throw new Error(r2.error);
+  await renameBackForUndo(newPath, prevName);
 }
 
 // Autoexports every selected file: writes a copy under a fresh
@@ -923,6 +975,7 @@ async function autoexportSelected() {
     const file = files[0];
     const prevName = file.name;
     try {
+      await settleMetaWritesBeforeRename();
       const result = await window.api.autoexportFile(state.folder, file.path, destFolder);
       if (result && result.error) {
         alert(result.error);
@@ -932,9 +985,9 @@ async function autoexportSelected() {
       state.selectAnchor = result.path;
       const { destFull, path: newPath } = result;
       pushUndo(`Autoexport "${prevName}"`, () => undoOneAutoexport(destFull, newPath, prevName));
+      await replaceRenamedFiles([{ from: file.path, to: newPath, file: result.file }]);
     } catch (e) {
       alert(`Couldn't autoexport "${prevName}": ${e.message || e}`);
-    } finally {
       await refreshFiles();
     }
     return;
@@ -944,16 +997,20 @@ async function autoexportSelected() {
   const prevNames = new Map(files.map((f) => [f.path, f.name]));
   let saved = [];
   let errors = [];
+  let threw = false;
   try {
+    await settleMetaWritesBeforeRename();
     const result = await window.api.autoexportFiles(state.folder, paths, destFolder);
     saved = (result && result.saved) || [];
     errors = (result && result.errors) || [];
   } catch (e) {
     errors = paths.map((p) => ({ path: p, error: e.message || String(e) }));
-  } finally {
-    state.selected = new Set([...saved.map((s) => s.path), ...errors.map((e) => e.path)]);
-    await refreshFiles();
+    threw = true;
   }
+  state.selected = new Set([...saved.map((s) => s.path), ...errors.map((e) => e.path)]);
+  // A call that threw outright leaves no telling what got renamed.
+  if (threw) await refreshFiles();
+  else await replaceRenamedFiles(saved.map((s) => ({ from: s.source, to: s.path, file: s.file })));
   if (saved.length > 0) {
     pushUndo(`Autoexport ${saved.length} files`, async () => {
       const errs = [];
@@ -2002,7 +2059,7 @@ function renderRail() {
 
   rail.querySelector("#choose-folder").addEventListener("click", chooseFolder);
   const refreshBtn = rail.querySelector("#refresh-folder-btn");
-  if (refreshBtn) refreshBtn.addEventListener("click", refreshFiles);
+  if (refreshBtn) refreshBtn.addEventListener("click", () => refreshFiles(false, { fresh: true }));
   const manageBtn = rail.querySelector("#manage-tags-btn");
   if (manageBtn) manageBtn.addEventListener("click", openTagManager);
   const navAll = rail.querySelector("#nav-all");

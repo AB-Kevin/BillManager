@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
   selectFolder: () => ipcRenderer.invoke("select-folder"),
-  listFiles: (folder) => ipcRenderer.invoke("list-files", folder),
+  listFiles: (folder, fresh) => ipcRenderer.invoke("list-files", folder, fresh),
   // A dropped browser File object carries no filesystem path of its own
   // (Electron removed the old File.path shortcut) — webUtils.getPathForFile
   // is the sanctioned replacement, only callable from the preload/main side.
