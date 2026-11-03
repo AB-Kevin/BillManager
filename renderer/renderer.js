@@ -373,7 +373,7 @@ function getAllTags() {
 // path, "" at the root). Intermediate folders that hold no files directly but do
 // hold subfolders with files still get a node, so the tree stays connected.
 function buildFolderTree(files) {
-  const root = { name: "", path: "", children: new Map(), count: 0, total: 0 };
+  const root = { name: "", path: "", children: new Map(), count: 0 };
   files.forEach((f) => {
     if (!f.dir) {
       root.count++;
@@ -384,16 +384,12 @@ function buildFolderTree(files) {
     for (const part of f.dir.split("/")) {
       acc = acc ? `${acc}/${part}` : part;
       if (!node.children.has(part)) {
-        node.children.set(part, { name: part, path: acc, children: new Map(), count: 0, total: 0 });
+        node.children.set(part, { name: part, path: acc, children: new Map(), count: 0 });
       }
       node = node.children.get(part);
     }
     node.count++;
   });
-  (function computeTotals(node) {
-    node.total = node.count + [...node.children.values()].reduce((sum, c) => sum + computeTotals(c), 0);
-    return node.total;
-  })(root);
   return root;
 }
 
@@ -403,7 +399,7 @@ function renderFolderTree(node, depth) {
     .map(
       (child) => `
       <div class="bm-nav-item ${state.activeFolder === child.path ? "active" : ""}" data-folder="${child.path.replace(/"/g, "&quot;")}" style="padding-left:${10 + depth * 14}px">
-        <span class="bm-nav-name">${ICONS.folder}<span class="bm-nav-name-text">${child.name}</span></span><span class="bm-nav-count">${child.total}</span>
+        <span class="bm-nav-name">${ICONS.folder}<span class="bm-nav-name-text">${child.name}</span></span><span class="bm-nav-count">${child.count}</span>
       </div>
       ${renderFolderTree(child, depth + 1)}`
     )
@@ -528,7 +524,9 @@ function getFiltered() {
     .filter((f) => f.name.toLowerCase().includes(state.search.toLowerCase()))
     .filter((f) => !state.untaggedOnly || f.tags.length === 0)
     .filter((f) => [...state.activeTags].every((t) => f.tags.includes(t)))
-    .filter((f) => !state.activeFolder || f.dir === state.activeFolder || f.dir.startsWith(state.activeFolder + "/"))
+    // A selected folder shows only its own files, not its subfolders' — those
+    // are reached by selecting the subfolder. "All files" (null) stays recursive.
+    .filter((f) => !state.activeFolder || f.dir === state.activeFolder)
     .filter((f) => !state.looseOnly || f.dir === "");
   return sortFiles(filtered);
 }
@@ -2687,8 +2685,9 @@ function renderPreviewEmpty() {
 
   // Scoped to state.activeFolder — the folder currently selected in the
   // rail's Folders list, or every file/folder in the catalog when it's null
-  // ("All files"). Recursive, same as getFiltered's own folder match, so a
-  // parent folder's stats include its subfolders' files too. Deliberately
+  // ("All files"). Recursive — unlike getFiltered's folder match, which shows
+  // only the folder's own files — so a parent folder's stats include its
+  // subfolders' files too ("Loose files" is the non-recursive count). Deliberately
   // NOT further narrowed by search/tag filters (unlike getFiltered) — those
   // are transient view filters, not something "This folder" should describe.
   const inScope = (dir) => !state.activeFolder || dir === state.activeFolder || dir.startsWith(state.activeFolder + "/");

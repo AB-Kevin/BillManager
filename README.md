@@ -118,6 +118,7 @@ if a test fails.
 - Only `.pdf`, `.jpg`, `.jpeg`, and `.png` files are shown.
 - "All files" browses the chosen folder and every subfolder recursively. The
   sidebar lists the subfolder tree underneath it — click a subfolder to
-  narrow the grid down to it (and its own subfolders); click "All files"
+  narrow the grid down to the files directly in it (files in its own
+  subfolders aren't shown until you select those); click "All files"
   again to clear the filter. Folders and files starting with a dot (e.g.
   `.git`) are skipped.
