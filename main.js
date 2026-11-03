@@ -1029,6 +1029,49 @@ ipcMain.handle("update-file-meta", async (event, folder, relPath, patch) => {
   throw lastErr;
 });
 
+// Some PDF generators write a cross-reference table whose object numbers are
+// off by one, so exiftool -- which appends its edit as an incremental update
+// and trusts that table -- rejects the file ("Root object (5 0 obj) not found
+// at offset ..."), while every PDF viewer silently rebuilds the table and
+// opens it fine. pdf-lib parses objects without trusting the table, so
+// loading and saving the file writes a fresh, correct one. That rewrites a
+// bill's bytes, so it's never automatic: only the save-error dialog's
+// "Resave PDF" button, for a file exiftool already refused, calls this.
+// Written to a temp file beside the original and renamed over it, so a
+// failure partway through never leaves a half-written bill behind.
+ipcMain.handle("resave-pdf", async (event, folder, relPath) => {
+  const full = path.join(folder, relPath);
+  const tmp = `${full}.resave-tmp`;
+  try {
+    const doc = await PDFDocument.load(fs.readFileSync(full), { updateMetadata: false });
+    fs.writeFileSync(tmp, await doc.save({ useObjectStreams: false }));
+    fs.renameSync(tmp, full);
+  } catch (e) {
+    try {
+      fs.unlinkSync(tmp);
+    } catch {}
+    return { error: `Couldn't resave "${path.basename(relPath)}": ${e.message}` };
+  }
+  metaCache.delete(full);
+  return true;
+});
+
+// A native message box with custom buttons, for the few prompts that need
+// more than confirm()'s OK/Cancel. Resolves to the clicked button's index.
+// noLink keeps Windows from restyling custom buttons as command links.
+ipcMain.handle("show-choice", async (event, { message, detail, buttons, cancelId }) => {
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: "warning",
+    message,
+    detail,
+    buttons,
+    defaultId: 0,
+    cancelId,
+    noLink: true,
+  });
+  return response;
+});
+
 // Rather than unlinking outright, moves the file into TRASH_DIR under a random
 // name and hands the renderer that path back. This is what makes Undo possible
 // for a delete: the bytes (and the tags/comments embedded in them) are still on

@@ -261,19 +261,48 @@ function saveFileMeta(folder, path, patch) {
 // it — offer one manual retry, and if that fails too the lock is probably
 // going to outlast the user sitting here, so tell them to come back later
 // instead of prompting to retry again.
+//
+// A PDF also gets a "Resave PDF" button: some PDF generators write a broken
+// cross-reference table that every viewer tolerates but exiftool refuses
+// every single time, lock or no lock -- resaving the file rewrites the table
+// (see resave-pdf in main.js), and then the save goes through.
 async function attemptSaveFileMeta(folder, path, patch, isRetry = false) {
   try {
     await window.api.updateFileMeta(folder, path, patch);
   } catch (e) {
     const name = path.split("/").pop();
-    if (!isRetry && confirm(`Couldn't save changes to "${name}":\n${e.message || e}\n\nRetry?`)) {
-      return attemptSaveFileMeta(folder, path, patch, true);
+    if (!isRetry) {
+      const choice = await askAfterSaveError(name, e.message || String(e), path.toLowerCase().endsWith(".pdf"));
+      if (choice === "retry") return attemptSaveFileMeta(folder, path, patch, true);
+      if (choice === "resave") {
+        const result = await window.api.resavePdf(folder, path);
+        if (!result.error) return attemptSaveFileMeta(folder, path, patch, true);
+        alert(result.error);
+      }
     }
     if (isRetry) {
       alert(`Still couldn't save changes to "${name}". Please try again in a few minutes.`);
     }
     throw e;
   }
+}
+
+// confirm() blocked the renderer, so a bulk tag edit failing on several files
+// used to prompt for them one at a time. The native dialog behind showChoice
+// doesn't block, so prompts are chained here to keep them from stacking up.
+let saveErrorPrompts = Promise.resolve();
+
+function askAfterSaveError(name, message, isPdf) {
+  const choices = isPdf ? ["retry", "resave", "cancel"] : ["retry", "cancel"];
+  const buttons = isPdf ? ["Retry", "Resave PDF and retry", "Cancel"] : ["Retry", "Cancel"];
+  const detail = isPdf
+    ? `${message}\n\nIf Retry keeps failing, the PDF itself may be malformed. "Resave PDF" rewrites the file's internal structure so changes can be saved; the bill's pages aren't changed.`
+    : message;
+  const prompt = saveErrorPrompts.then(() =>
+    window.api.showChoice({ message: `Couldn't save changes to "${name}".`, detail, buttons, cancelId: buttons.length - 1 })
+  );
+  saveErrorPrompts = prompt.catch(() => {});
+  return prompt.then((i) => choices[i]);
 }
 
 async function waitForPendingMetaWrites() {

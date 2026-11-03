@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("api", {
   importFiles: (folder, absPaths, destDir) => ipcRenderer.invoke("import-files", folder, absPaths, destDir),
   updateFileMeta: (folder, filename, patch) =>
     ipcRenderer.invoke("update-file-meta", folder, filename, patch),
+  resavePdf: (folder, filename) => ipcRenderer.invoke("resave-pdf", folder, filename),
+  showChoice: (options) => ipcRenderer.invoke("show-choice", options),
   deleteFile: (folder, filename) => ipcRenderer.invoke("delete-file", folder, filename),
   deleteFiles: (folder, relPaths) => ipcRenderer.invoke("delete-files-batch", folder, relPaths),
   restoreFile: (trashPath, folder, filename) => ipcRenderer.invoke("restore-file", trashPath, folder, filename),
