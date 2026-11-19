@@ -39,7 +39,7 @@ test("the updater reads this repository's releases", () => {
 });
 
 test("every file the app starts from is packaged", () => {
-  for (const file of [pkg.main, "preload.js"]) {
+  for (const file of [pkg.main, "preload.js", "preload-aging.js", "aging-core.js"]) {
     assert.ok(fs.existsSync(path.join(root, file)), `${file} is missing`);
     assert.ok(pkg.build.files.includes(file), `${file} isn't in build.files`);
   }

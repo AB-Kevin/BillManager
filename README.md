@@ -10,6 +10,28 @@ and the tags/comments travel with the file itself. A file can hold multiple
 comments — they're stored together in the same metadata field, separated
 internally so they round-trip cleanly.
 
+## Bill aging report
+
+**Bill aging report** in the left rail opens a second window that reports on
+the open folder against the payment commitment (10 business days by default):
+what's open, overdue and coming due, the age spread, staff workload, a daily
+trend, and a filterable report you can export to CSV or print. Clicking a
+bill's name selects it in the main window. It replaces the standalone Python
+"Bill Aging Dashboard" and follows the same rules (see `aging-core.js`):
+
+- **Open** = not tagged *Entered*. **Main** = the tracked folders (UB-04, 1500,
+  Member facing by default); **Waiting** = tagged Waiting there;
+  **Collections** = the Collections folder or tag; everything else is
+  **Other**. The archive folder and any `archive` subfolder are skipped.
+- **Received** = the file's created date, or the earliest one any computer
+  has seen for the same content, or a manual override (the **Date** button).
+
+Its settings, overrides, first-seen dates and history are shared by everyone
+using the folder, in two hidden files beside `.catalog-tags.json`:
+`.catalog-aging.json` (settings and overrides) and `.catalog-aging-log.json`
+(first-seen dates and daily history, merged rather than overwritten when
+two computers write at once). Saved reports and filters stay on each computer.
+
 ## Prerequisites
 
 - [Node.js](https://nodejs.org) (LTS version). This includes `npm`, which

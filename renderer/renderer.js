@@ -22,6 +22,7 @@ const ICONS = {
   rotate: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.4 7.6A7.5 7.5 0 1 0 20 12"/><polyline points="21 4 20 8 16 7"/></svg>`,
   chevronLeft: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>`,
   chevronRight: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
+  chart: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>`,
 };
 
 // The "Stack" app mark (design_handoff_billmanager_refresh — application icon spec):
@@ -1626,6 +1627,29 @@ function exitReviewMode() {
   if (exitedPath) scrollCardIntoView(exitedPath);
 }
 
+// The Bill Aging window's "Show in BillManager": selects the bill here so it
+// can be previewed, tagged or moved. Rescans first if it isn't listed yet (it
+// arrived since the last refresh), and clears whatever filters would hide it.
+async function revealFile({ folder, path }) {
+  if (folder !== state.folder) return;
+  if (!state.files.some((f) => f.path === path)) await refreshFiles(true);
+  if (!state.files.some((f) => f.path === path)) return;
+  if (state.reviewMode) exitReviewModeState();
+  if (!getFiltered().some((f) => f.path === path)) {
+    state.search = "";
+    state.activeTags = new Set();
+    state.activeFolder = null;
+    state.untaggedOnly = false;
+    state.looseOnly = false;
+  }
+  state.selected = new Set([path]);
+  state.selectAnchor = path;
+  state.navCursor = path;
+  render();
+  const item = document.querySelector(`#grid-wrap [data-path="${CSS.escape(path)}"]`);
+  if (item) item.scrollIntoView({ block: "center" });
+}
+
 // Points review at `path`, keeping state.selected (and hence the right-hand
 // preview pane) in lockstep — see the file-level comment above.
 function setReviewCursorState(path) {
@@ -2037,7 +2061,8 @@ function renderRail() {
               ? `<div class="bm-rail-path-row">
                    <div class="bm-rail-path">${state.folder}</div>
                    <button class="bm-refresh-btn ${state.refreshing ? "spinning" : ""}" id="refresh-folder-btn" title="Refresh — rescan this folder for changes" ${state.refreshing ? "disabled" : ""}>${ICONS.refresh}</button>
-                 </div>`
+                 </div>
+                 <button class="bm-btn bm-btn-ghost bm-btn-sm bm-btn-block bm-aging-btn" id="open-aging-btn" title="How old every open bill in this folder is, what's coming due, and exportable reports — opens in its own window">${ICONS.chart} Bill aging report</button>`
               : `<div class="bm-rail-hint">Pick a folder to browse its PDFs, JPGs, and PNGs.</div>`
           }
         </div>
@@ -2088,6 +2113,8 @@ function renderRail() {
   `);
 
   rail.querySelector("#choose-folder").addEventListener("click", chooseFolder);
+  const agingBtn = rail.querySelector("#open-aging-btn");
+  if (agingBtn) agingBtn.addEventListener("click", () => window.api.openAgingWindow(state.folder));
   const refreshBtn = rail.querySelector("#refresh-folder-btn");
   if (refreshBtn) refreshBtn.addEventListener("click", () => refreshFiles(false, { fresh: true }));
   const manageBtn = rail.querySelector("#manage-tags-btn");
@@ -3789,6 +3816,7 @@ function renderCommenterNameModal() {
   state.autoexportFolder = (await window.api.getAutoexportFolder()) || "";
   window.api.onArchiveRan((result) => archiveRan(result));
   window.api.onUpdateStatus((status) => setUpdateStatus(status));
+  window.api.onRevealFile((target) => revealFile(target));
   checkForUpdates(); // not awaited — a startup check shouldn't hold up opening the last folder
 
   const lastFolder = await window.api.getLastFolder();

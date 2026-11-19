@@ -65,4 +65,11 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("update-status", listener);
   },
   openRepo: () => ipcRenderer.invoke("open-repo-page"),
+  openAgingWindow: (folder) => ipcRenderer.invoke("open-aging-window", folder),
+  // The Bill Aging window's "Show in BillManager" -- see revealFile in renderer.js.
+  onRevealFile: (callback) => {
+    const listener = (event, target) => callback(target);
+    ipcRenderer.on("reveal-file", listener);
+    return () => ipcRenderer.removeListener("reveal-file", listener);
+  },
 });

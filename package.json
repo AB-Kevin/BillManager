@@ -22,6 +22,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "preload-aging.js",
+      "aging-core.js",
       "renderer/**/*"
     ],
     "win": {

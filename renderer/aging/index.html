@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bill Aging</title>
+    <!-- Bundled, so the window looks right without an internet connection. -->
+    <link rel="stylesheet" href="../../node_modules/@fontsource/poppins/300.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/poppins/400.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/poppins/500.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/poppins/600.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/barlow-condensed/500.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource/barlow-condensed/600.css" />
+    <!-- The main window's stylesheet, for the brand tokens, light/dark and the header. -->
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="aging.css" />
+  </head>
+  <body>
+    <header class="bm-header ag-header">
+      <div class="bm-header-brand">
+        <img class="bm-logo" src="../assets/logo-primary-lockup.jpg" alt="Anabaptist Brotherhood" />
+        <span class="bm-header-app">Bill Aging</span>
+      </div>
+      <div class="ag-head-info">
+        <div id="commit-note">Payment commitment</div>
+        <div class="sub"><span id="asof">Loading…</span> · <span id="folder-path"></span></div>
+      </div>
+      <div class="ag-head-actions">
+        <button id="btn-refresh" class="bm-btn bm-btn-primary bm-btn-sm">Refresh</button>
+        <button id="btn-settings" class="bm-btn bm-btn-secondary bm-btn-sm">Settings</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="error" class="error" hidden></div>
+      <div id="notice" class="notice" hidden></div>
+
+      <div id="content" hidden>
+        <section class="viewbar">
+          <span class="vb-label">View</span>
+          <div id="view-chips" class="chips"></div>
+          <button class="link" id="view-allopen" title="Every open bill in every folder">All open</button>
+          <span class="vb-sep"></span>
+          <label class="inline">Split bars by
+            <select id="split">
+              <option value="folder">Folder</option><option value="category">Category</option>
+              <option value="stage">Stage</option><option value="staff">Staff</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="tiles" id="tiles"></section>
+        <section class="tiles small" id="tiles-side"></section>
+
+        <section class="grid2">
+          <div class="card">
+            <div class="card-head">
+              <h2>Coming due <span class="vlabel"></span></h2>
+              <label class="inline"><input type="checkbox" id="cap-toggle"> Capacity line <input type="number" id="cap-value" min="1" class="num"> /day</label>
+            </div>
+            <p class="hint"><b id="hol-note"></b> Open bills in the view reaching their <span id="fc-days">10</span>-day mark on each counted day. The first bar is anything already past it. The line is the running total that must be done by each date. Click a bar to list those bills.</p>
+            <div id="chart-forecast" class="chart"></div>
+            <div id="legend-forecast" class="legend"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Age spread <span class="vlabel"></span></h2></div>
+            <p class="hint">Bills in the view by days since received. The colored band shows the urgency stage. Click a bar to list those bills.</p>
+            <div id="chart-age" class="chart"></div>
+            <div id="legend-age" class="legend"></div>
+          </div>
+        </section>
+
+        <section class="grid2">
+          <div class="card">
+            <div class="card-head"><h2>Staff workload <span class="vlabel"></span></h2></div>
+            <p class="hint">Open bills in the view by staff tag (a bill tagged to two people counts for both). Click a row to list them.</p>
+            <table class="mini" id="staff-table"></table>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Trend <span class="vlabel"></span></h2></div>
+            <p class="hint">Daily snapshot of open and overdue bills in the view (one point per day anyone opens this report).</p>
+            <div id="chart-trend" class="chart short"></div>
+            <div id="legend-trend" class="legend"></div>
+          </div>
+        </section>
+
+        <section class="card" id="report">
+          <div class="card-head">
+            <h2>Report</h2>
+            <div class="actions">
+              <button id="btn-csv">Export CSV</button>
+              <button id="btn-print">Print report</button>
+              <button id="btn-save">Save report</button>
+            </div>
+          </div>
+          <div class="presets" id="presets"></div>
+          <div class="filters">
+            <label>Category <select id="f-cat"><option value="@view">Same as View</option><option>Main</option><option>Waiting</option><option>Collections</option><option value="Other">Other folders</option><option>Entered</option><option value="@open">All open</option><option value="">Everything</option></select></label>
+            <label>Folder <select id="f-folder"></select></label>
+            <label>Staff <select id="f-staff"></select></label>
+            <label>Status <select id="f-status">
+              <option value="">Any</option><option value="overdue">Overdue</option><option value="today">Due today</option>
+              <option value="next3">Due in next 3 days</option><option value="next7">Due in next 7 days</option><option value="ontrack">Not yet due</option>
+            </select></label>
+            <label>Stage <select id="f-stage"></select></label>
+            <label>Age (days) <span><input type="number" id="f-agemin" class="num" placeholder="min"> – <input type="number" id="f-agemax" class="num" placeholder="max"></span></label>
+            <label>Due between <span><input type="date" id="f-duefrom"> – <input type="date" id="f-dueto"></span></label>
+            <label>Date source <select id="f-source">
+              <option value="">Any</option><option value="Created date">Created date</option><option value="First seen">First seen</option>
+              <option value="Override">Override</option><option value="uncertain">Date uncertain</option>
+            </select></label>
+            <label class="grow">Search <input type="search" id="f-q" placeholder="file name, tag…"></label>
+            <button id="btn-clear" class="link">Clear</button>
+          </div>
+          <div class="print-head" id="print-head"></div>
+          <div class="result-line" id="result-line"></div>
+          <div class="table-wrap">
+            <table class="bills" id="bills-table"></table>
+          </div>
+        </section>
+
+        <section class="card" id="attention-card">
+          <div class="card-head"><h2>Needs attention <span class="count" id="att-count"></span></h2></div>
+          <p class="hint">"Date uncertain" means the file looks copied or synced here, so its real receipt date is unknown. Set the correct date and it sticks, even if the file moves.</p>
+          <div class="table-wrap"><table class="mini" id="att-table"></table></div>
+        </section>
+
+        <footer class="foot" id="foot"></footer>
+      </div>
+    </main>
+
+    <dialog id="settings">
+      <form method="dialog" id="settings-form">
+        <h2>Settings</h2>
+        <p class="hint">Shared by everyone who opens this folder in BillManager.</p>
+        <fieldset>
+          <legend>Main folders (on the payment clock)</legend>
+          <div id="s-tracked" class="checks"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Collections folders (tracked separately)</legend>
+          <div id="s-collections" class="checks"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Urgency stages (the last stage covers everything older)</legend>
+          <div id="s-stages"></div>
+        </fieldset>
+        <fieldset>
+          <legend>How days are counted</legend>
+          <label><input type="radio" name="s-count" value="business"> Business days (Mon–Fri, skipping the holidays below)</label>
+          <label><input type="radio" name="s-count" value="calendar"> Calendar days (every day counts)</label>
+          <label>Commitment <input type="number" id="s-days" class="num" min="1"> days</label>
+          <div class="hol-wrap">
+            <span class="src">Office holidays (one per line, MM/DD/YYYY or YYYY-MM-DD). Only used for business days.</span>
+            <textarea id="s-holidays" rows="6"></textarea>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Other</legend>
+          <label>Staff tags (comma separated) <input type="text" id="s-staff"></label>
+        </fieldset>
+        <div class="dialog-actions">
+          <button value="cancel" formnovalidate>Cancel</button>
+          <button id="s-save" value="save" class="primary">Save &amp; rescan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="override">
+      <form method="dialog">
+        <h2>Set receipt date</h2>
+        <p id="ov-file" class="mono"></p>
+        <p class="hint" id="ov-info"></p>
+        <label>Received on <input type="date" id="ov-date"></label>
+        <div class="dialog-actions">
+          <button value="clear" id="ov-clear">Remove override</button>
+          <button value="cancel" formnovalidate>Cancel</button>
+          <button value="save" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="save-report">
+      <form method="dialog">
+        <h2>Save report</h2>
+        <p class="hint">Saves the current filters and View as a button above the report, on this computer.</p>
+        <label>Name <input type="text" id="sr-name" required></label>
+        <div class="dialog-actions">
+          <button value="cancel" formnovalidate>Cancel</button>
+          <button value="save" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="tip" class="tip" hidden></div>
+    <script src="aging.js"></script>
+  </body>
+</html>

@@ -8,6 +8,7 @@ const { execFileSync } = require("child_process");
 const { exiftool } = require("exiftool-vendored");
 const { autoUpdater } = require("electron-updater");
 const { PDFDocument, degrees } = require("pdf-lib");
+const aging = require("./aging-core");
 
 const ACCEPTED_EXT = [".pdf", ".jpg", ".jpeg", ".png"];
 
@@ -62,10 +63,16 @@ function createWindow() {
   // Coming back to the window is the most likely moment someone just signed
   // in/out of AB Apps -- see refreshAbAppsName.
   mainWindow.on("focus", () => refreshAbAppsName());
+  // The Bill Aging window reports on the folder open here, so it goes too.
+  mainWindow.on("closed", () => {
+    if (agingWindow && !agingWindow.isDestroyed()) agingWindow.close();
+  });
 }
 
 nativeTheme.on("updated", () => {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(themeBackground());
+  for (const win of [mainWindow, agingWindow]) {
+    if (win && !win.isDestroyed()) win.setBackgroundColor(themeBackground());
+  }
 });
 
 // Deleted files land here instead of being unlinked outright, so the renderer's
@@ -261,15 +268,21 @@ async function readFileMeta(full, ext) {
 let metaCache = new Map();
 
 async function readFileMetaCached(full, ext, stat) {
+  return (await readFileMetaCachedOrError(full, ext, stat)).meta;
+}
+
+// The same, also saying why a read failed -- the Bill Aging report lists files
+// whose tags couldn't be read rather than quietly counting them as untagged.
+async function readFileMetaCachedOrError(full, ext, stat) {
   const hit = metaCache.get(full);
-  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return hit.meta;
+  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return { meta: hit.meta, error: null };
   try {
     const meta = await readFileMetaFromDisk(full, ext);
     metaCache.set(full, { size: stat.size, mtimeMs: stat.mtimeMs, meta });
-    return meta;
-  } catch {
+    return { meta, error: null };
+  } catch (e) {
     metaCache.delete(full);
-    return { tags: [], comments: [] };
+    return { meta: { tags: [], comments: [] }, error: String(e?.message || e).slice(0, 200) };
   }
 }
 
@@ -332,6 +345,7 @@ ipcMain.handle("get-last-folder", async () => {
 ipcMain.handle("set-last-folder", async (event, folder) => {
   fs.mkdirSync(path.dirname(LAST_FOLDER_FILE), { recursive: true });
   fs.writeFileSync(LAST_FOLDER_FILE, JSON.stringify({ folder }), "utf8");
+  setAgingFolder(folder);
   return true;
 });
 
@@ -1645,3 +1659,314 @@ ipcMain.handle("count-archive-due", (event, folder) => {
 ipcMain.handle("run-archive", (event, folder) => runArchive(folder));
 
 ipcMain.handle("run-scheduled-archive", (event, folder) => runScheduledArchive(folder));
+
+// --- Bill Aging --------------------------------------------------------------
+// A second window reporting how old every open bill in the open catalog is
+// against the payment commitment: tiles, a coming-due forecast, the age
+// spread, staff workload, a daily trend and an exportable report. The rules
+// live in aging-core.js; this part walks the folder, reads each bill's tags
+// (through metaCache, so the main window's reads are reused) and keeps the
+// report's state.
+//
+// That state belongs to the catalog, like its tags and archive settings, so
+// everyone sees the same numbers. It's split by who writes it:
+//   .catalog-aging.json      { settings, overrides } -- changed by people,
+//                            re-read just before each save
+//   .catalog-aging-log.json  { firstSeen, history } -- written by scans on
+//                            every computer, so each write merges with what's
+//                            there (earliest first-seen date wins; a day's
+//                            history rows are replaced by its latest scan)
+// firstSeen maps a hash of each bill's first 64 KB (unchanged by tagging,
+// moving or renaming) to the earliest created date any computer has seen for
+// it -- created dates on a synced folder are when the file reached *that*
+// computer. overrides are manual receipt dates. Both carry over from the old
+// standalone Python dashboard unchanged.
+const AGING_CONFIG_FILENAME = ".catalog-aging.json";
+const AGING_LOG_FILENAME = ".catalog-aging-log.json";
+const AGING_HASH_BYTES = 64 * 1024;
+
+let agingWindow = null;
+let agingFolder = null; // the folder the main window has open
+// Content hashes, remembered while the size and modified time match -- the
+// same idea as metaCache.
+let agingHashCache = new Map();
+const agingScans = new Map(); // folder -> the scan in flight
+
+function readAgingConfig(folder) {
+  const raw = readJsonRetrying(path.join(folder, AGING_CONFIG_FILENAME)) || {};
+  return {
+    settings: aging.normalizeSettings(raw.settings),
+    overrides: Array.isArray(raw.overrides) ? raw.overrides.filter((o) => o && typeof o.date === "string") : [],
+  };
+}
+
+function updateAgingConfig(folder, change) {
+  const next = change(readAgingConfig(folder));
+  writeJsonRetrying(path.join(folder, AGING_CONFIG_FILENAME), next, { hidden: true });
+}
+
+function readAgingLog(folder) {
+  const raw = readJsonRetrying(path.join(folder, AGING_LOG_FILENAME)) || {};
+  return {
+    firstSeen: raw.firstSeen && typeof raw.firstSeen === "object" ? raw.firstSeen : {},
+    history: Array.isArray(raw.history) ? raw.history.filter((r) => r && typeof r.date === "string") : [],
+  };
+}
+
+// Merges this scan's results into whatever is on disk now (another computer
+// may have written since this scan read it), and only writes when that
+// changes something -- most refreshes add nothing new.
+function saveAgingLog(folder, firstSeen, today, todayRows) {
+  const current = readAgingLog(folder);
+  const next = {
+    firstSeen: aging.mergeFirstSeen(current.firstSeen, firstSeen),
+    history: aging.mergeHistory(current.history, today, todayRows),
+  };
+  if (JSON.stringify(next) === JSON.stringify(current)) return;
+  writeJsonRetrying(path.join(folder, AGING_LOG_FILENAME), next, { hidden: true });
+}
+
+function headHash(full) {
+  const buf = Buffer.alloc(AGING_HASH_BYTES);
+  const fd = fs.openSync(full, "r");
+  let n = 0;
+  try {
+    for (let r; n < buf.length && (r = fs.readSync(fd, buf, n, buf.length - n, n)) > 0; ) n += r;
+  } finally {
+    fs.closeSync(fd);
+  }
+  return crypto.createHash("sha1").update(buf.subarray(0, n)).digest("hex");
+}
+
+// Every file under the catalog's subfolders (files loose in the catalog
+// itself aren't bills), skipping dot entries, BillManager's archive folder and
+// any folder named in excluded_folder_names (the office's own "archive"
+// subfolders). Skipped folders are listed with how many bills they hold.
+function walkAgingFolder(root, archiveRel, excludedNames) {
+  const archiveKey = path.normalize(archiveRel).toLowerCase();
+  const excluded = new Set(excludedNames.map((n) => n.toLowerCase()));
+  const files = [];
+  const skipped = {};
+  const topFolders = [];
+  const entries = (abs) => {
+    try {
+      return fs.readdirSync(abs, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+  };
+  const countBills = (abs) =>
+    entries(abs).reduce(
+      (n, e) =>
+        n + (e.isDirectory() ? countBills(path.join(abs, e.name)) : e.isFile() && aging.isBillFile(e.name) ? 1 : 0),
+      0
+    );
+  const walk = (relDir) => {
+    const list = relDir ? entries(path.join(root, relDir)) : fs.readdirSync(root, { withFileTypes: true });
+    for (const e of list) {
+      if (e.name.startsWith(".")) continue;
+      const rel = relDir ? `${relDir}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (path.normalize(rel).toLowerCase() === archiveKey || excluded.has(e.name.toLowerCase())) {
+          skipped[rel] = countBills(path.join(root, rel));
+          continue;
+        }
+        if (!relDir) topFolders.push(e.name);
+        walk(rel);
+      } else if (e.isFile() && relDir) {
+        const parts = relDir.split("/");
+        files.push({ rel, name: e.name, top: parts[0], subfolder: parts.slice(1).join("/") });
+      }
+    }
+  };
+  walk("");
+  return { files, skipped, topFolders };
+}
+
+async function readAgingFile(root, f, hashCache) {
+  if (aging.isTempName(f.name) || !aging.isBillFile(f.name)) return f;
+  const full = path.join(root, f.rel);
+  try {
+    const stat = fs.statSync(full);
+    let hit = agingHashCache.get(full);
+    if (!hit || hit.size !== stat.size || hit.mtimeMs !== stat.mtimeMs) {
+      hit = { size: stat.size, mtimeMs: stat.mtimeMs, hash: headHash(full) };
+    }
+    hashCache.set(full, hit);
+    const { meta, error } = await readFileMetaCachedOrError(full, path.extname(f.name).toLowerCase(), stat);
+    return {
+      ...f,
+      size: stat.size,
+      createdMs: stat.birthtimeMs || stat.ctimeMs,
+      modifiedMs: stat.mtimeMs,
+      hash: hit.hash,
+      tags: meta.tags,
+      tagError: error,
+    };
+  } catch (e) {
+    return { ...f, readError: String(e?.message || e).slice(0, 200) };
+  }
+}
+
+function friendlyAgingError(e, file) {
+  if (e instanceof SyntaxError || ["EBUSY", "EPERM", "EACCES"].includes(e.code)) {
+    return new Error(
+      `${file} couldn't be read (OneDrive may be syncing it). Try Refresh in a moment. If it keeps failing, restore ${file} from OneDrive's version history.`
+    );
+  }
+  return e;
+}
+
+async function scanAging(folder) {
+  if (!folder) throw new Error("No folder is open in BillManager. Open the Bills folder there first.");
+  if (!fs.existsSync(folder)) throw new Error(`Folder not found: ${folder}`);
+  let config, log;
+  try {
+    config = readAgingConfig(folder);
+  } catch (e) {
+    throw friendlyAgingError(e, AGING_CONFIG_FILENAME);
+  }
+  try {
+    log = readAgingLog(folder);
+  } catch (e) {
+    throw friendlyAgingError(e, AGING_LOG_FILENAME);
+  }
+  let tagCatalog = [];
+  try {
+    tagCatalog = readTagsFile(tagConfigPath(folder)) || [];
+  } catch {}
+  let archiveFolder = null;
+  try {
+    archiveFolder = readArchiveConfig(folder).archiveFolder;
+  } catch {}
+
+  const walked = walkAgingFolder(folder, archiveFolder || "Archived", config.settings.excluded_folder_names);
+  const hashCache = new Map();
+  const files = await Promise.all(walked.files.map((f) => readAgingFile(folder, f, hashCache)));
+  agingHashCache = hashCache;
+
+  const { result, firstSeen, todayRows } = aging.computeReport({
+    root: folder,
+    files,
+    skipped: walked.skipped,
+    topFolders: walked.topFolders,
+    settings: config.settings,
+    tagCatalog,
+    archiveFolder,
+    firstSeen: log.firstSeen,
+    overrides: config.overrides,
+    history: log.history,
+    nowMs: Date.now(),
+  });
+  try {
+    saveAgingLog(folder, firstSeen, result.today, todayRows);
+  } catch (e) {
+    // The report itself is still right; only the shared record didn't update.
+    result.log_error = `First-seen dates and today's trend point weren't saved: ${e.message}`;
+  }
+  return result;
+}
+
+// A scan already running for the folder is shared rather than started twice.
+function scanAgingShared(folder) {
+  if (!agingScans.has(folder)) {
+    agingScans.set(
+      folder,
+      scanAging(folder).finally(() => agingScans.delete(folder))
+    );
+  }
+  return agingScans.get(folder);
+}
+
+// After a settings or override change: a scan already running started before
+// it, so wait it out and start a fresh one.
+async function rescanAging(folder) {
+  await agingScans.get(folder)?.catch(() => {});
+  return scanAgingShared(folder);
+}
+
+function setAgingFolder(folder) {
+  if (folder === agingFolder) return;
+  agingFolder = folder;
+  if (agingWindow && !agingWindow.isDestroyed()) agingWindow.webContents.send("aging-folder", folder);
+}
+
+function openAgingWindow(folder) {
+  if (folder) setAgingFolder(folder);
+  if (agingWindow && !agingWindow.isDestroyed()) {
+    if (agingWindow.isMinimized()) agingWindow.restore();
+    agingWindow.focus();
+    return;
+  }
+  agingWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 760,
+    minHeight: 500,
+    title: "Bill Aging",
+    backgroundColor: themeBackground(),
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, "build", "icon.ico"),
+    webPreferences: {
+      preload: path.join(__dirname, "preload-aging.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  agingWindow.loadFile(path.join(__dirname, "renderer", "aging", "index.html"));
+  agingWindow.on("closed", () => {
+    agingWindow = null;
+  });
+}
+
+ipcMain.handle("open-aging-window", (event, folder) => openAgingWindow(folder));
+
+ipcMain.handle("aging-get-folder", () => agingFolder);
+
+ipcMain.handle("aging-scan", (event, folder) => scanAgingShared(folder));
+
+ipcMain.handle("aging-save-settings", async (event, folder, patch) => {
+  try {
+    updateAgingConfig(folder, (c) => ({ ...c, settings: aging.applySettingsPatch(c.settings, patch) }));
+  } catch (e) {
+    throw friendlyAgingError(e, AGING_CONFIG_FILENAME);
+  }
+  return rescanAging(folder);
+});
+
+// { hash, path, date } -- an empty date removes the bill's override.
+ipcMain.handle("aging-set-override", async (event, folder, { hash, path: relPath, date }) => {
+  if (typeof hash !== "string" || typeof relPath !== "string") throw new Error("Refresh and try again.");
+  try {
+    updateAgingConfig(folder, (c) => ({
+      ...c,
+      overrides: aging.setOverride(c.overrides, { hash, path: relPath, date }, aging.localDate(Date.now())),
+    }));
+  } catch (e) {
+    throw friendlyAgingError(e, AGING_CONFIG_FILENAME);
+  }
+  return rescanAging(folder);
+});
+
+ipcMain.handle("aging-show-in-folder", (event, folder, relPath) => {
+  shell.showItemInFolder(path.join(folder, relPath));
+});
+
+// "Show in BillManager": brings the main window forward with the bill selected.
+ipcMain.handle("aging-reveal", (event, folder, relPath) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+  mainWindow.webContents.send("reveal-file", { folder, path: relPath });
+  return true;
+});
+
+ipcMain.handle("aging-save-csv", async (event, defaultName, text) => {
+  const result = await dialog.showSaveDialog(agingWindow || mainWindow, {
+    defaultPath: path.join(app.getPath("documents"), defaultName),
+    filters: [{ name: "CSV", extensions: ["csv"] }],
+  });
+  if (result.canceled || !result.filePath) return null;
+  fs.writeFileSync(result.filePath, text, "utf8");
+  return result.filePath;
+});
